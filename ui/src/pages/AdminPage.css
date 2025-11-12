@@ -248,7 +248,12 @@
 .empty-orders {
   text-align: center;
   padding: 40px 20px;
+}
+
+.empty-orders-text {
   color: #8d6e63;
+  font-size: 15px;
+  margin: 0;
 }
 
 .order-item {
@@ -265,6 +270,17 @@
 
 .order-item:hover {
   background-color: #f5f0eb;
+}
+
+/* 제조중인 주문 강조 */
+.order-item.in-progress {
+  background-color: #fff8e1;
+  border: 2px solid #ffb74d;
+  box-shadow: 0 2px 8px rgba(255, 183, 77, 0.2);
+}
+
+.order-item.in-progress:hover {
+  background-color: #fff3cd;
 }
 
 .order-info {
@@ -318,6 +334,28 @@
 
 .order-action-button:active {
   transform: scale(0.98);
+}
+
+/* 제조 시작 버튼 */
+.order-action-button.start {
+  border-color: #ff6f00;
+  color: #ff6f00;
+}
+
+.order-action-button.start:hover {
+  background-color: #ff6f00;
+  color: #ffffff;
+}
+
+/* 제조 완료 버튼 */
+.order-action-button.complete {
+  border-color: #2e7d32;
+  color: #2e7d32;
+}
+
+.order-action-button.complete:hover {
+  background-color: #2e7d32;
+  color: #ffffff;
 }
 
 .order-completed {

@@ -189,46 +189,84 @@ function AdminPage() {
           </div>
         </section>
 
-        {/* 주문 현황 */}
+        {/* 접수된 주문 */}
         <section className="orders-section">
-          <h2 className="section-title">주문 현황</h2>
+          <h2 className="section-title">접수된 주문</h2>
           <div className="orders-list">
-            {orders.length === 0 ? (
+            {orders.filter(order => order.status === 'received' || order.status === 'pending').length === 0 ? (
               <div className="empty-orders">
-                <p>주문이 없습니다</p>
+                <p className="empty-orders-text">접수된 주문이 없습니다</p>
               </div>
             ) : (
-              orders.map(order => (
-                <div key={order.orderId} className="order-item">
-                  <div className="order-info">
-                    <span className="order-date">
-                      {formatDate(order.createdAt)}
-                    </span>
-                    <span className="order-items">
-                      {order.items.map((item, idx) => (
-                        <span key={idx}>
-                          {item.menuName} x {item.quantity}
-                          {idx < order.items.length - 1 ? ', ' : ''}
-                        </span>
-                      ))}
-                    </span>
-                    <span className="order-amount">
-                      {order.totalAmount.toLocaleString()}원
-                    </span>
-                  </div>
-                  {order.status !== 'completed' && (
+              orders
+                .filter(order => order.status === 'received' || order.status === 'pending')
+                .map(order => (
+                  <div key={order.orderId} className="order-item">
+                    <div className="order-info">
+                      <span className="order-date">
+                        {formatDate(order.createdAt)}
+                      </span>
+                      <span className="order-items">
+                        {order.items.map((item, idx) => (
+                          <span key={idx}>
+                            {item.menuName} x {item.quantity}
+                            {idx < order.items.length - 1 ? ', ' : ''}
+                          </span>
+                        ))}
+                      </span>
+                      <span className="order-amount">
+                        {order.totalAmount.toLocaleString()}원
+                      </span>
+                    </div>
                     <button
-                      className="order-action-button"
+                      className="order-action-button start"
                       onClick={() => handleOrderStatusChange(order.orderId, getNextStatus(order.status))}
                     >
                       {getOrderButtonText(order.status)}
                     </button>
-                  )}
-                  {order.status === 'completed' && (
-                    <span className="order-completed">완료</span>
-                  )}
-                </div>
-              ))
+                  </div>
+                ))
+            )}
+          </div>
+        </section>
+
+        {/* 제조중인 주문 */}
+        <section className="orders-section">
+          <h2 className="section-title">제조중인 주문</h2>
+          <div className="orders-list">
+            {orders.filter(order => order.status === 'inProgress').length === 0 ? (
+              <div className="empty-orders">
+                <p className="empty-orders-text">제조중인 주문이 없습니다</p>
+              </div>
+            ) : (
+              orders
+                .filter(order => order.status === 'inProgress')
+                .map(order => (
+                  <div key={order.orderId} className="order-item in-progress">
+                    <div className="order-info">
+                      <span className="order-date">
+                        {formatDate(order.createdAt)}
+                      </span>
+                      <span className="order-items">
+                        {order.items.map((item, idx) => (
+                          <span key={idx}>
+                            {item.menuName} x {item.quantity}
+                            {idx < order.items.length - 1 ? ', ' : ''}
+                          </span>
+                        ))}
+                      </span>
+                      <span className="order-amount">
+                        {order.totalAmount.toLocaleString()}원
+                      </span>
+                    </div>
+                    <button
+                      className="order-action-button complete"
+                      onClick={() => handleOrderStatusChange(order.orderId, getNextStatus(order.status))}
+                    >
+                      제조 완료
+                    </button>
+                  </div>
+                ))
             )}
           </div>
         </section>

@@ -214,11 +214,19 @@ function OrderPage() {
           </div>
         </section>
 
-        {/* 장바구니 섹션 */}
-        {cart.length > 0 && (
-          <section className="cart-section">
-            <h2 className="cart-title">장바구니</h2>
-            
+        {/* 장바구니 섹션 - 항상 표시 */}
+        <section className="cart-section">
+          <h2 className="cart-title">장바구니</h2>
+          
+          {cart.length === 0 ? (
+            // 빈 장바구니
+            <div className="empty-cart">
+              <div className="empty-cart-icon">🛒</div>
+              <p className="empty-cart-message">장바구니가 비어있습니다</p>
+              <p className="empty-cart-hint">원하시는 메뉴를 선택하고 '담기' 버튼을 눌러주세요</p>
+            </div>
+          ) : (
+            // 장바구니에 아이템이 있을 때
             <div className="cart-container">
               {/* 왼쪽: 주문 내역 */}
               <div className="cart-items-container">
@@ -290,8 +298,8 @@ function OrderPage() {
                 </button>
               </div>
             </div>
-          </section>
-        )}
+          )}
+        </section>
       </main>
     </div>
   )

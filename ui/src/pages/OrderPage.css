@@ -226,6 +226,36 @@
   border-bottom: 2px solid #e8e3db;
 }
 
+/* 빈 장바구니 */
+.empty-cart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-cart-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-cart-message {
+  font-size: 18px;
+  font-weight: 600;
+  color: #5c4033;
+  margin: 0 0 8px 0;
+}
+
+.empty-cart-hint {
+  font-size: 14px;
+  color: #8d6e63;
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* 장바구니 컨테이너 - 2열 레이아웃 */
 .cart-container {
   display: grid;
