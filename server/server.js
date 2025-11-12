@@ -1,3 +1,6 @@
+// UTF-8 인코딩 설정
+process.env.LANG = 'ko_KR.UTF-8';
+
 require('dotenv').config();
 const app = require('./src/app');
 

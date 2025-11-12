@@ -5,7 +5,7 @@ const getAllMenus = async (req, res, next) => {
   try {
     // 메뉴 조회
     const menusResult = await query(
-      'SELECT menu_id, name, description, price, image_url FROM menus ORDER BY menu_id'
+      'SELECT menu_id, name, description, price, stock, image_url FROM menus ORDER BY menu_id'
     );
 
     const menus = menusResult.rows;
@@ -25,6 +25,7 @@ const getAllMenus = async (req, res, next) => {
       name: menu.name,
       description: menu.description,
       price: menu.price,
+      stock: menu.stock,
       imageUrl: menu.image_url,
       options: menu.options.map(opt => ({
         optionId: opt.option_id,

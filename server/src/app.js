@@ -10,8 +10,14 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true }));
+
+// UTF-8 응답 헤더 설정
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 // 요청 로깅 미들웨어
 app.use((req, res, next) => {
@@ -63,12 +69,12 @@ app.get('/api/db-test', async (req, res, next) => {
 
 // API 라우트
 const menusRouter = require('./routes/menus');
-// const ordersRouter = require('./routes/orders');
-// const adminRouter = require('./routes/admin');
+const ordersRouter = require('./routes/orders');
+const adminRouter = require('./routes/admin');
 
 app.use('/api/menus', menusRouter);
-// app.use('/api/orders', ordersRouter);
-// app.use('/api/admin', adminRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/admin', adminRouter);
 
 // 404 에러 처리
 app.use((req, res) => {

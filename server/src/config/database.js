@@ -9,7 +9,8 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   max: 20, // 최대 커넥션 수
   idleTimeoutMillis: 30000, // 유휴 연결 타임아웃
-  connectionTimeoutMillis: 2000 // 연결 타임아웃
+  connectionTimeoutMillis: 2000, // 연결 타임아웃
+  client_encoding: 'UTF8' // 클라이언트 인코딩
 });
 
 // 연결 테스트

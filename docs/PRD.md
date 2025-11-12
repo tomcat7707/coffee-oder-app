@@ -3276,3 +3276,267 @@ INSERT INTO options (menu_id, name, price) VALUES
 ```
 
 ---
+
+## 9. 구현 완료 및 배포 가이드
+
+### 9.1 구현 완료 상태 (2025-11-12)
+
+#### 9.1.1 완료된 기능
+✅ **프론트엔드 (React + Vite)**
+- 주문 페이지: 메뉴 선택, 옵션 추가, 장바구니, 주문 생성
+- 관리자 페이지: 통계 대시보드, 재고 관리, 주문 상태 관리
+- 실시간 재고 표시 (10개 이하 주황색, 0개 빨간색)
+- 주문 상태별 구분 (접수된 주문 / 제조중인 주문)
+- 반응형 UI (커피 테마 디자인)
+
+✅ **백엔드 (Node.js + Express + PostgreSQL)**
+- RESTful API 9개 엔드포인트 구현
+- 트랜잭션 기반 주문 처리 (재고 차감 자동화)
+- 주문 상태 관리 (received → inProgress → completed)
+- CORS 설정, 에러 핸들링, 입력 검증
+- UTF-8 한글 완벽 지원
+
+✅ **데이터베이스 (PostgreSQL)**
+- 5개 테이블 (menus, options, orders, order_items, order_item_options)
+- 7개 인덱스 (성능 최적화)
+- 자동 타임스탬프 업데이트 트리거
+- 외래키 제약조건 및 참조 무결성
+
+#### 9.1.2 기술 스택 최종 버전
+```json
+{
+  "frontend": {
+    "framework": "React 18.3.1",
+    "buildTool": "Vite 5.4.21",
+    "routing": "React Router DOM 6.26.0",
+    "devServer": "http://localhost:3000"
+  },
+  "backend": {
+    "runtime": "Node.js 22.x",
+    "framework": "Express 4.18.2",
+    "database": "PostgreSQL 14+",
+    "dbClient": "pg 8.11.0",
+    "devServer": "http://localhost:5000"
+  }
+}
+```
+
+### 9.2 중요 설정 및 해결된 이슈
+
+#### 9.2.1 PostgreSQL UTF-8 인코딩 설정
+**문제:** Windows 환경에서 한글이 ???로 깨지는 현상
+**해결방법:**
+```sql
+-- 데이터베이스 생성 시 UTF-8 인코딩 명시
+CREATE DATABASE coffee_order_db 
+WITH ENCODING='UTF8' 
+LC_COLLATE='C' 
+LC_CTYPE='C' 
+TEMPLATE=template0;
+```
+
+**데이터 삽입 시:**
+```powershell
+# PowerShell에서 UTF-8 환경 설정
+$env:PGCLIENTENCODING='UTF8'
+$env:PGPASSWORD='your_password'
+psql -U postgres -d coffee_order_db -f database/seed_korean.sql
+```
+
+#### 9.2.2 Express UTF-8 응답 설정
+```javascript
+// src/app.js
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
+
+// src/config/database.js
+const pool = new Pool({
+  // ...기타 설정
+  client_encoding: 'UTF8'
+});
+```
+
+#### 9.2.3 서버 실행 명령어
+```powershell
+# 백엔드 서버 (터미널 1)
+cd I:\Cursor_test\oder-app-vscode\server
+npm run dev
+
+# 프론트엔드 서버 (터미널 2)
+cd I:\Cursor_test\oder-app-vscode\ui
+npm run dev
+```
+
+**서버 상태 확인:**
+```powershell
+# 포트 사용 확인
+netstat -ano | findstr ":3000 :5000"
+
+# Node 프로세스 전체 종료 (문제 발생 시)
+taskkill /F /IM node.exe
+```
+
+### 9.3 데이터베이스 초기화 절차
+
+#### 9.3.1 데이터베이스 생성
+```powershell
+cd server
+$psqlPath = (Get-ChildItem "C:\Program Files\PostgreSQL\*\bin\psql.exe")[0].FullName
+$env:PGPASSWORD='7337'
+
+# 기존 DB 삭제 및 재생성
+& $psqlPath -U postgres -c "DROP DATABASE IF EXISTS coffee_order_db;"
+& $psqlPath -U postgres -c "CREATE DATABASE coffee_order_db WITH ENCODING='UTF8' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE=template0;"
+```
+
+#### 9.3.2 스키마 및 데이터 삽입
+```powershell
+# 스키마 생성
+$env:PGCLIENTENCODING='UTF8'
+Get-Content "database\schema.sql" -Raw | & $psqlPath -U postgres -d coffee_order_db
+
+# 한글 데이터 삽입
+& $psqlPath -U postgres -d coffee_order_db -f database\seed_korean.sql
+```
+
+### 9.4 API 엔드포인트 목록
+
+#### 9.4.1 메뉴 관련
+- `GET /api/menus` - 전체 메뉴 및 옵션 조회
+- `GET /api/menus/:menuId` - 특정 메뉴 상세 조회
+
+#### 9.4.2 주문 관련
+- `POST /api/orders` - 주문 생성 (재고 차감 포함)
+- `GET /api/orders/:orderId` - 주문 상세 조회
+
+#### 9.4.3 관리자 관련
+- `GET /api/admin/statistics` - 주문 통계 조회
+- `GET /api/admin/inventory` - 재고 목록 조회
+- `PATCH /api/admin/inventory/:menuId` - 재고 수정
+- `GET /api/admin/orders` - 주문 목록 조회 (상태별 필터)
+- `PATCH /api/admin/orders/:orderId/status` - 주문 상태 변경
+
+### 9.5 프로젝트 구조
+```
+oder-app-vscode/
+├── docs/
+│   └── PRD.md                    # 본 문서
+├── server/                       # 백엔드
+│   ├── database/
+│   │   ├── schema.sql           # DB 스키마
+│   │   ├── seed.sql             # 영문 시드 데이터
+│   │   └── seed_korean.sql      # 한글 시드 데이터 (사용중)
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── database.js      # PostgreSQL 연결 풀
+│   │   ├── controllers/
+│   │   │   ├── menuController.js
+│   │   │   ├── orderController.js
+│   │   │   └── adminController.js
+│   │   ├── routes/
+│   │   │   ├── menus.js
+│   │   │   ├── orders.js
+│   │   │   └── admin.js
+│   │   ├── middleware/
+│   │   │   ├── errorHandler.js
+│   │   │   └── validator.js
+│   │   └── app.js               # Express 앱 설정
+│   ├── .env                      # 환경 변수 (DB 비밀번호)
+│   ├── .gitignore
+│   ├── package.json
+│   └── server.js                 # 서버 엔트리포인트
+├── ui/                           # 프론트엔드
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── OrderPage.jsx    # 주문 페이지
+│   │   │   ├── OrderPage.css
+│   │   │   ├── AdminPage.jsx    # 관리자 페이지
+│   │   │   └── AdminPage.css
+│   │   ├── services/
+│   │   │   └── api.js           # API 호출 함수
+│   │   ├── App.jsx              # 라우팅 설정
+│   │   ├── App.css
+│   │   └── main.jsx
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
+└── .git/
+```
+
+### 9.6 환경 변수 설정
+
+**server/.env**
+```env
+# 데이터베이스 설정
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=coffee_order_db
+DB_USER=postgres
+DB_PASSWORD=7337
+
+# 서버 설정
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+```
+
+### 9.7 알려진 제한사항 및 향후 개선 사항
+
+#### 9.7.1 현재 제한사항
+- 사용자 인증 없음 (누구나 관리자 페이지 접근 가능)
+- 결제 기능 없음
+- 이미지는 외부 URL 사용 (Unsplash)
+- 실시간 알림 없음 (새로고침 필요)
+
+#### 9.7.2 향후 개선 가능 항목
+- [ ] 관리자 로그인 인증 추가
+- [ ] 주문 완료 시 알림 기능 (WebSocket)
+- [ ] 주문 내역 페이지
+- [ ] 메뉴 이미지 업로드 기능
+- [ ] 판매 통계 차트
+- [ ] 주문 취소 기능
+- [ ] 프린터 연동 (주문서 출력)
+
+### 9.8 트러블슈팅 가이드
+
+#### 9.8.1 한글 깨짐 현상
+**증상:** 메뉴 이름이 ???로 표시됨
+**해결:**
+1. 데이터베이스 재생성 (섹션 9.3 참조)
+2. seed_korean.sql 파일로 데이터 재삽입
+3. 브라우저 캐시 삭제 후 Ctrl+Shift+R
+
+#### 9.8.2 서버 실행 안됨
+**증상:** npm run dev 시 에러
+**해결:**
+```powershell
+# 1. 모든 Node 프로세스 종료
+taskkill /F /IM node.exe
+
+# 2. node_modules 재설치
+cd server
+rm -r node_modules
+npm install
+
+# 3. 서버 재시작
+npm run dev
+```
+
+#### 9.8.3 포트 충돌
+**증상:** EADDRINUSE 에러
+**해결:**
+```powershell
+# 포트 사용 프로세스 확인
+netstat -ano | findstr ":5000"
+
+# 프로세스 강제 종료 (PID는 위 명령어 결과에서 확인)
+taskkill /F /PID <프로세스ID>
+```
+
+---
+
+**마지막 업데이트:** 2025-11-12
+**작성자:** AI Assistant with User
+**상태:** ✅ 구현 완료 및 테스트 완료

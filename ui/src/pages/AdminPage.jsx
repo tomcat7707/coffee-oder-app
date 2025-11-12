@@ -1,40 +1,48 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { statisticsApi, inventoryApi, orderApi } from '../services/api'
 import './AdminPage.css'
-
-// 임시 통계 데이터
-const INITIAL_STATISTICS = {
-  total: 1,
-  received: 1,
-  inProgress: 0,
-  completed: 0
-}
-
-// 임시 재고 데이터
-const INITIAL_INVENTORY = [
-  { menuId: 1, menuName: '아메리카노 (ICE)', stock: 10 },
-  { menuId: 2, menuName: '아메리카노 (HOT)', stock: 10 },
-  { menuId: 3, menuName: '카페라떼', stock: 10 }
-]
-
-// 임시 주문 데이터
-const INITIAL_ORDERS = [
-  {
-    orderId: 1,
-    createdAt: '2025-07-31T13:00:00',
-    items: [
-      { menuName: '아메리카노(ICE)', quantity: 1 }
-    ],
-    totalAmount: 4000,
-    status: 'received'
-  }
-]
 
 function AdminPage() {
   const navigate = useNavigate()
-  const [statistics, setStatistics] = useState(INITIAL_STATISTICS)
-  const [inventory, setInventory] = useState(INITIAL_INVENTORY)
-  const [orders, setOrders] = useState(INITIAL_ORDERS)
+  const [statistics, setStatistics] = useState({
+    total: 0,
+    received: 0,
+    inProgress: 0,
+    completed: 0
+  })
+  const [inventory, setInventory] = useState([])
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // 데이터 로드
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // 통계, 재고, 주문 데이터 병렬 로드
+      const [statsData, inventoryData, ordersData] = await Promise.all([
+        statisticsApi.getStatistics(),
+        inventoryApi.getInventory(),
+        orderApi.getOrders()
+      ])
+      
+      setStatistics(statsData)
+      setInventory(inventoryData)
+      setOrders(ordersData)
+    } catch (err) {
+      console.error('Failed to load admin data:', err)
+      setError('데이터를 불러오는데 실패했습니다')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // 재고 상태 판단
   const getStockStatus = (stock) => {
@@ -44,49 +52,40 @@ function AdminPage() {
   }
 
   // 재고 증가
-  const handleIncreaseStock = (menuId) => {
-    setInventory(prev => prev.map(item =>
-      item.menuId === menuId
-        ? { ...item, stock: item.stock + 1 }
-        : item
-    ))
+  const handleIncreaseStock = async (menuId) => {
+    try {
+      const item = inventory.find(i => i.menuId === menuId)
+      await inventoryApi.updateStock(menuId, item.stock + 1)
+      await loadData() // 데이터 새로고침
+    } catch (err) {
+      console.error('Failed to increase stock:', err)
+      alert('재고 증가에 실패했습니다')
+    }
   }
 
   // 재고 감소
-  const handleDecreaseStock = (menuId) => {
-    setInventory(prev => prev.map(item =>
-      item.menuId === menuId
-        ? { ...item, stock: Math.max(0, item.stock - 1) }
-        : item
-    ))
+  const handleDecreaseStock = async (menuId) => {
+    try {
+      const item = inventory.find(i => i.menuId === menuId)
+      if (item.stock > 0) {
+        await inventoryApi.updateStock(menuId, item.stock - 1)
+        await loadData() // 데이터 새로고침
+      }
+    } catch (err) {
+      console.error('Failed to decrease stock:', err)
+      alert('재고 감소에 실패했습니다')
+    }
   }
 
   // 주문 상태 변경
-  const handleOrderStatusChange = (orderId, newStatus) => {
-    setOrders(prev => prev.map(order =>
-      order.orderId === orderId
-        ? { ...order, status: newStatus }
-        : order
-    ))
-
-    // 통계 업데이트
-    setStatistics(prev => {
-      const order = orders.find(o => o.orderId === orderId)
-      const oldStatus = order.status
-      const newStats = { ...prev }
-
-      // 이전 상태에서 감소
-      if (oldStatus === 'received') newStats.received -= 1
-      if (oldStatus === 'inProgress') newStats.inProgress -= 1
-      if (oldStatus === 'completed') newStats.completed -= 1
-
-      // 새 상태에 추가
-      if (newStatus === 'received') newStats.received += 1
-      if (newStatus === 'inProgress') newStats.inProgress += 1
-      if (newStatus === 'completed') newStats.completed += 1
-
-      return newStats
-    })
+  const handleOrderStatusChange = async (orderId, newStatus) => {
+    try {
+      await orderApi.updateOrderStatus(orderId, newStatus)
+      await loadData() // 데이터 새로고침
+    } catch (err) {
+      console.error('Failed to update order status:', err)
+      alert('주문 상태 변경에 실패했습니다')
+    }
   }
 
   // 날짜 포맷팅
@@ -130,6 +129,26 @@ function AdminPage() {
 
       {/* 메인 컨텐츠 */}
       <main className="main-content">
+        {/* 로딩 상태 */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '40px', fontSize: '18px' }}>
+            데이터를 불러오는 중...
+          </div>
+        )}
+
+        {/* 에러 상태 */}
+        {error && (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <p style={{ color: '#e74c3c', marginBottom: '16px' }}>{error}</p>
+            <button onClick={loadData} style={{ padding: '8px 16px', cursor: 'pointer' }}>
+              다시 시도
+            </button>
+          </div>
+        )}
+
+        {/* 정상 상태 */}
+        {!loading && !error && (
+          <>
         {/* 관리자 대시보드 */}
         <section className="dashboard-section">
           <h2 className="section-title">관리자 대시보드</h2>
@@ -270,6 +289,8 @@ function AdminPage() {
             )}
           </div>
         </section>
+          </>
+        )}
       </main>
     </div>
   )

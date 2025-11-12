@@ -1,48 +1,35 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { menuApi, orderApi } from '../services/api'
 import './OrderPage.css'
-
-// 임시 메뉴 데이터
-const MENU_DATA = [
-  {
-    id: 1,
-    name: '아메리카노(ICE)',
-    price: 4000,
-    description: '시원하고 깔끔한 아이스 아메리카노',
-    imageUrl: 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=400&h=300&fit=crop',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  },
-  {
-    id: 2,
-    name: '아메리카노(HOT)',
-    price: 4000,
-    description: '따뜻하고 진한 아메리카노',
-    imageUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  },
-  {
-    id: 3,
-    name: '카페라떼',
-    price: 5000,
-    description: '부드럽고 고소한 카페라떼',
-    imageUrl: 'https://images.unsplash.com/photo-1561882468-9110e03e0f78?w=400&h=300&fit=crop',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  }
-]
 
 function OrderPage() {
   const navigate = useNavigate()
+  const [menus, setMenus] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [cart, setCart] = useState([])
   const [selectedOptions, setSelectedOptions] = useState({})
+  const [orderLoading, setOrderLoading] = useState(false)
+
+  // 메뉴 데이터 로드
+  useEffect(() => {
+    loadMenus()
+  }, [])
+
+  const loadMenus = async () => {
+    try {
+      setLoading(true)
+      const data = await menuApi.getMenus()
+      setMenus(data)
+      setError(null)
+    } catch (err) {
+      console.error('Failed to load menus:', err)
+      setError('메뉴를 불러오는데 실패했습니다')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // 옵션 선택/해제 핸들러
   const handleOptionChange = (menuId, optionId) => {
@@ -61,16 +48,16 @@ function OrderPage() {
 
   // 장바구니에 추가
   const handleAddToCart = (menu) => {
-    const selectedOptionIds = selectedOptions[menu.id] || []
+    const selectedOptionIds = selectedOptions[menu.menuId] || []
     const selectedMenuOptions = menu.options.filter(opt => 
-      selectedOptionIds.includes(opt.id)
+      selectedOptionIds.includes(opt.optionId)
     )
     
     const optionsPrice = selectedMenuOptions.reduce((sum, opt) => sum + opt.price, 0)
     const totalPrice = menu.price + optionsPrice
 
     const cartItem = {
-      menuId: menu.id,
+      menuId: menu.menuId,
       menuName: menu.name,
       basePrice: menu.price,
       selectedOptions: selectedMenuOptions,
@@ -99,7 +86,7 @@ function OrderPage() {
     // 선택된 옵션 초기화
     setSelectedOptions(prev => ({
       ...prev,
-      [menu.id]: []
+      [menu.menuId]: []
     }))
   }
 
@@ -139,12 +126,32 @@ function OrderPage() {
   }
 
   // 주문하기
-  const handleOrder = () => {
+  const handleOrder = async () => {
     if (cart.length === 0) return
 
-    // TODO: API 호출
-    alert('주문이 완료되었습니다!')
-    setCart([])
+    try {
+      setOrderLoading(true)
+      
+      // API 요청 형식으로 변환
+      const orderData = {
+        items: cart.map(item => ({
+          menuId: item.menuId,
+          quantity: item.quantity,
+          options: item.selectedOptions.map(opt => ({
+            optionId: opt.optionId
+          }))
+        }))
+      }
+
+      const result = await orderApi.createOrder(orderData)
+      alert(`주문이 완료되었습니다!\n주문번호: ${result.orderId}\n총 금액: ${result.totalAmount.toLocaleString()}원`)
+      setCart([])
+    } catch (err) {
+      console.error('Order failed:', err)
+      alert(err.message || '주문에 실패했습니다')
+    } finally {
+      setOrderLoading(false)
+    }
   }
 
   return (
@@ -162,57 +169,82 @@ function OrderPage() {
 
       {/* 메인 컨텐츠 */}
       <main className="main-content">
-        {/* 메뉴 아이템 섹션 */}
-        <section className="menu-section">
-          <div className="menu-grid">
-            {MENU_DATA.map(menu => (
-              <div key={menu.id} className="menu-card">
-                {/* 이미지 영역 */}
-                <div className="menu-image">
-                  {menu.imageUrl ? (
-                    <img src={menu.imageUrl} alt={menu.name} />
-                  ) : (
-                    <div className="image-placeholder">
-                      <div className="placeholder-line line-1"></div>
-                      <div className="placeholder-line line-2"></div>
-                    </div>
-                  )}
-                </div>
+        {/* 로딩 상태 */}
+        {loading && (
+          <div className="loading-message">메뉴를 불러오는 중...</div>
+        )}
 
-                {/* 메뉴 정보 */}
-                <div className="menu-info">
-                  <h3 className="menu-name">{menu.name}</h3>
-                  <p className="menu-price">{menu.price.toLocaleString()}원</p>
-                  <p className="menu-description">{menu.description}</p>
-                </div>
-
-                {/* 옵션 선택 */}
-                <div className="menu-options">
-                  {menu.options.map(option => (
-                    <label key={option.id} className="option-item">
-                      <input
-                        type="checkbox"
-                        checked={(selectedOptions[menu.id] || []).includes(option.id)}
-                        onChange={() => handleOptionChange(menu.id, option.id)}
-                      />
-                      <span className="option-label">
-                        {option.name} (+{option.price}원)
-                      </span>
-                    </label>
-                  ))}
-                </div>
-
-                {/* 담기 버튼 */}
-                <button 
-                  className="add-button"
-                  onClick={() => handleAddToCart(menu)}
-                >
-                  담기
-                </button>
-              </div>
-            ))}
+        {/* 에러 상태 */}
+        {error && (
+          <div className="error-message">
+            {error}
+            <button onClick={loadMenus} className="retry-button">다시 시도</button>
           </div>
-        </section>
+        )}
+
+        {/* 메뉴 아이템 섹션 */}
+        {!loading && !error && (
+          <section className="menu-section">
+            <div className="menu-grid">
+              {menus.map(menu => (
+                <div key={menu.menuId} className="menu-card">
+                  {/* 이미지 영역 */}
+                  <div className="menu-image">
+                    {menu.imageUrl ? (
+                      <img src={menu.imageUrl} alt={menu.name} />
+                    ) : (
+                      <div className="image-placeholder">
+                        <div className="placeholder-line line-1"></div>
+                        <div className="placeholder-line line-2"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 메뉴 정보 */}
+                  <div className="menu-info">
+                    <h3 className="menu-name">{menu.name}</h3>
+                    <p className="menu-price">{menu.price.toLocaleString()}원</p>
+                    <p className="menu-description">{menu.description}</p>
+                    {menu.stock !== undefined && (
+                      <p className="menu-stock" style={{ 
+                        color: menu.stock > 10 ? '#666' : menu.stock > 0 ? '#ff6b35' : '#e74c3c',
+                        fontSize: '14px',
+                        marginTop: '8px',
+                        fontWeight: menu.stock <= 5 ? 'bold' : 'normal'
+                      }}>
+                        재고: {menu.stock}개
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 옵션 선택 */}
+                  <div className="menu-options">
+                    {menu.options.map(option => (
+                      <label key={option.optionId} className="option-item">
+                        <input
+                          type="checkbox"
+                          checked={(selectedOptions[menu.menuId] || []).includes(option.optionId)}
+                          onChange={() => handleOptionChange(menu.menuId, option.optionId)}
+                        />
+                        <span className="option-label">
+                          {option.name} (+{option.price}원)
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* 담기 버튼 */}
+                  <button 
+                    className="add-button"
+                    onClick={() => handleAddToCart(menu)}
+                  >
+                    담기
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 장바구니 섹션 - 항상 표시 */}
         <section className="cart-section">

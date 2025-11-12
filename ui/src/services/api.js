@@ -12,11 +12,13 @@ async function apiCall(endpoint, options = {}) {
       ...options,
     })
 
+    const data = await response.json()
+
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`)
+      throw new Error(data.error || `API Error: ${response.status}`)
     }
 
-    return await response.json()
+    return data
   } catch (error) {
     console.error('API Call Error:', error)
     throw error
@@ -26,59 +28,79 @@ async function apiCall(endpoint, options = {}) {
 // 메뉴 관련 API
 export const menuApi = {
   // 메뉴 목록 조회
-  getMenus: () => apiCall('/menus'),
+  getMenus: async () => {
+    const response = await apiCall('/menus')
+    return response.data
+  },
   
   // 메뉴 상세 조회
-  getMenu: (id) => apiCall(`/menus/${id}`),
+  getMenu: async (id) => {
+    const response = await apiCall(`/menus/${id}`)
+    return response.data
+  },
 }
 
 // 재고 관련 API
 export const inventoryApi = {
   // 재고 목록 조회
-  getInventory: () => apiCall('/inventory'),
+  getInventory: async () => {
+    const response = await apiCall('/admin/inventory')
+    return response.data
+  },
   
   // 재고 업데이트
-  updateStock: (menuId, stock) => 
-    apiCall(`/inventory/${menuId}`, {
-      method: 'PUT',
+  updateStock: async (menuId, stock) => {
+    const response = await apiCall(`/admin/inventory/${menuId}`, {
+      method: 'PATCH',
       body: JSON.stringify({ stock }),
-    }),
-  
-  // 재고 증가
-  increaseStock: (menuId) => 
-    apiCall(`/inventory/${menuId}/increase`, {
-      method: 'PATCH',
-    }),
-  
-  // 재고 감소
-  decreaseStock: (menuId) => 
-    apiCall(`/inventory/${menuId}/decrease`, {
-      method: 'PATCH',
-    }),
+    })
+    return response.data
+  },
 }
 
 // 주문 관련 API
 export const orderApi = {
   // 주문 목록 조회
-  getOrders: () => apiCall('/orders'),
+  getOrders: async (status) => {
+    let endpoint = '/admin/orders'
+    if (status) {
+      endpoint += `?status=${status}`
+    }
+    const response = await apiCall(endpoint)
+    return response.data
+  },
   
   // 주문 생성
-  createOrder: (orderData) => 
-    apiCall('/orders', {
+  createOrder: async (orderData) => {
+    const response = await apiCall('/orders', {
       method: 'POST',
       body: JSON.stringify(orderData),
-    }),
+    })
+    return response.data
+  },
+  
+  // 주문 상세 조회
+  getOrder: async (orderId) => {
+    const response = await apiCall(`/orders/${orderId}`)
+    return response.data
+  },
   
   // 주문 상태 변경
-  updateOrderStatus: (orderId, status) => 
-    apiCall(`/orders/${orderId}/status`, {
+  updateOrderStatus: async (orderId, status) => {
+    const response = await apiCall(`/admin/orders/${orderId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
-    }),
+    })
+    return response.data
+  },
 }
 
 // 통계 관련 API
 export const statisticsApi = {
   // 주문 통계 조회
-  getStatistics: () => apiCall('/statistics'),
+  getStatistics: async () => {
+    const response = await apiCall('/admin/statistics')
+    return response.data
+  },
 }
+
