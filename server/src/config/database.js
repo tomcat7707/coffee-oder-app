@@ -1,16 +1,24 @@
 const { Pool } = require('pg');
 
 // PostgreSQL 연결 풀 설정
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      // Production: DATABASE_URL 사용
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    }
+  : {
+      // Development: 개별 설정 사용
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT) || 5432,
+      database: process.env.DB_NAME || 'coffee_order_db',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD,
+      ssl: false
+    };
+
 const pool = new Pool({
-  // Production에서는 DATABASE_URL 환경 변수 사용 (Render.com)
-  // Development에서는 개별 설정 사용
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  host: process.env.DATABASE_URL ? undefined : (process.env.DB_HOST || 'localhost'),
-  port: process.env.DATABASE_URL ? undefined : (process.env.DB_PORT || 5432),
-  database: process.env.DATABASE_URL ? undefined : (process.env.DB_NAME || 'coffee_order'),
-  user: process.env.DATABASE_URL ? undefined : (process.env.DB_USER || 'postgres'),
-  password: process.env.DATABASE_URL ? undefined : process.env.DB_PASSWORD,
+  ...poolConfig,
   max: 20, // 최대 커넥션 수
   idleTimeoutMillis: 30000, // 유휴 연결 타임아웃
   connectionTimeoutMillis: 2000, // 연결 타임아웃
