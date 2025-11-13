@@ -51,8 +51,8 @@ pool.on('connect', (client) => {
 });
 
 pool.on('error', (err) => {
-  console.error('❌ 데이터베이스 연결 오류:', err);
-  process.exit(-1);
+  console.error('❌ 데이터베이스 연결 오류:', err.message);
+  // process.exit(-1); // 주석 처리 - 서버가 계속 실행되어야 함
 });
 
 // 쿼리 헬퍼 함수

@@ -5,7 +5,7 @@ import './AdminPage.css'
 
 function AdminPage() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('inventory') // 'inventory', 'orders', 'menus'
+  const [activeTab, setActiveTab] = useState('orders') // 'inventory', 'orders', 'menus'
   const [statistics, setStatistics] = useState({
     total: 0,
     received: 0,
@@ -24,6 +24,8 @@ function AdminPage() {
   const [showOptionModal, setShowOptionModal] = useState(false)
   const [editingMenu, setEditingMenu] = useState(null)
   const [editingOption, setEditingOption] = useState(null)
+  const [targetMenuForOption, setTargetMenuForOption] = useState(null)
+  const [expandedOptionMenus, setExpandedOptionMenus] = useState({})
 
   // 데이터 로드
   useEffect(() => {
@@ -49,6 +51,13 @@ function AdminPage() {
       setOrders(ordersData)
       setMenus(menusData)
       setOptions(optionsData)
+      setExpandedOptionMenus(prev => {
+        const nextState = {}
+        menusData.forEach(menu => {
+          nextState[menu.menuId] = prev?.[menu.menuId] ?? false
+        })
+        return nextState
+      })
     } catch (err) {
       console.error('Failed to load admin data:', err)
       setError('데이터를 불러오는데 실패했습니다')
@@ -56,6 +65,40 @@ function AdminPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    let isCancelled = false
+    let isRefreshing = false
+
+    const pollOrders = async () => {
+      if (isCancelled || isRefreshing) return
+
+      isRefreshing = true
+
+      try {
+        const [statsData, ordersData] = await Promise.all([
+          statisticsApi.getStatistics(),
+          orderApi.getOrders()
+        ])
+
+        if (!isCancelled) {
+          setStatistics(statsData)
+          setOrders(ordersData)
+        }
+      } catch (err) {
+        console.error('Failed to refresh orders:', err)
+      } finally {
+        isRefreshing = false
+      }
+    }
+
+    const intervalId = setInterval(pollOrders, 5000)
+
+    return () => {
+      isCancelled = true
+      clearInterval(intervalId)
+    }
+  }, [])
 
   // 재고 상태 판단
   const getStockStatus = (stock) => {
@@ -101,6 +144,18 @@ function AdminPage() {
     }
   }
 
+  const handleOrderCancel = async (orderId) => {
+    if (!confirm('정말 주문을 취소하시겠습니까?')) return
+
+    try {
+      await orderApi.cancelOrder(orderId)
+      await loadData()
+    } catch (err) {
+      console.error('Failed to cancel order:', err)
+      alert(err.message || '주문 취소에 실패했습니다')
+    }
+  }
+
   // 날짜 포맷팅
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -112,19 +167,34 @@ function AdminPage() {
   }
 
   // 메뉴 추가/수정 핸들러
-  const handleMenuSave = async (menuData) => {
+  const handleMenuSave = async (menuData, imageFile) => {
     try {
+      let savedMenu
       if (editingMenu) {
-        await menuApi.updateMenu(editingMenu.menuId, menuData)
+        // 메뉴 수정
+        savedMenu = await menuApi.updateMenu(editingMenu.menuId, menuData)
+        
+        // 이미지가 선택되었으면 업로드
+        if (imageFile) {
+          await menuApi.uploadMenuImage(editingMenu.menuId, imageFile)
+        }
       } else {
-        await menuApi.createMenu(menuData)
+        // 메뉴 추가
+        savedMenu = await menuApi.createMenu(menuData)
+        
+        // 이미지가 선택되었으면 업로드
+        if (imageFile && savedMenu.menuId) {
+          await menuApi.uploadMenuImage(savedMenu.menuId, imageFile)
+        }
       }
+      
       setShowMenuModal(false)
       setEditingMenu(null)
       await loadData()
     } catch (err) {
       console.error('Failed to save menu:', err)
       alert('메뉴 저장에 실패했습니다')
+      throw err
     }
   }
 
@@ -144,14 +214,53 @@ function AdminPage() {
   // 옵션 추가/수정 핸들러
   const handleOptionSave = async (optionData) => {
     try {
+      const menuId = Number(optionData.menuId)
+      const parsedName = optionData.name?.trim() || ''
+      const rawPrice = optionData.price === '' || optionData.price === undefined
+        ? 0
+        : Number(optionData.price)
+
+      if (!menuId || Number.isNaN(menuId)) {
+        alert('연결할 메뉴를 선택해주세요')
+        return
+      }
+
+      if (!parsedName) {
+        alert('옵션명은 필수입니다')
+        return
+      }
+
+      if (!Number.isFinite(rawPrice)) {
+        alert('가격 형식이 올바르지 않습니다')
+        return
+      }
+
+      const roundedPrice = Math.round(rawPrice)
+
+      if (roundedPrice < 0) {
+        alert('가격은 0 이상의 정수여야 합니다')
+        return
+      }
+
+      const payload = {
+        menuId,
+        name: parsedName,
+        price: roundedPrice
+      }
+
       if (editingOption) {
-        await optionApi.updateOption(editingOption.optionId, optionData)
+        await optionApi.updateOption(editingOption.optionId, payload)
       } else {
-        await optionApi.createOption(optionData)
+        await optionApi.createOption(payload)
       }
       setShowOptionModal(false)
       setEditingOption(null)
+      setTargetMenuForOption(null)
       await loadData()
+      setExpandedOptionMenus(prev => ({
+        ...prev,
+        [menuId]: true
+      }))
     } catch (err) {
       console.error('Failed to save option:', err)
       alert('옵션 저장에 실패했습니다')
@@ -171,11 +280,19 @@ function AdminPage() {
     }
   }
 
+  const toggleOptionSection = (menuId) => {
+    setExpandedOptionMenus(prev => ({
+      ...prev,
+      [menuId]: !prev?.[menuId]
+    }))
+  }
+
   // 주문 상태에 따른 버튼 텍스트
   const getOrderButtonText = (status) => {
     if (status === 'pending') return '주문 접수'
     if (status === 'received') return '제조 시작'
     if (status === 'inProgress') return '제조 완료'
+    if (status === 'cancelled') return '취소됨'
     return '완료'
   }
 
@@ -184,6 +301,7 @@ function AdminPage() {
     if (status === 'pending') return 'received'
     if (status === 'received') return 'inProgress'
     if (status === 'inProgress') return 'completed'
+    if (status === 'cancelled') return 'cancelled'
     return 'completed'
   }
 
@@ -340,12 +458,20 @@ function AdminPage() {
                         {order.totalAmount.toLocaleString()}원
                       </span>
                     </div>
-                    <button
-                      className="order-action-button start"
-                      onClick={() => handleOrderStatusChange(order.orderId, getNextStatus(order.status))}
-                    >
-                      {getOrderButtonText(order.status)}
-                    </button>
+                    <div className="order-actions">
+                      <button
+                        className="order-action-button start"
+                        onClick={() => handleOrderStatusChange(order.orderId, getNextStatus(order.status))}
+                      >
+                        {getOrderButtonText(order.status)}
+                      </button>
+                      <button
+                        className="order-action-button cancel"
+                        onClick={() => handleOrderCancel(order.orderId)}
+                      >
+                        주문 취소
+                      </button>
+                    </div>
                   </div>
                 ))
             )}
@@ -381,12 +507,14 @@ function AdminPage() {
                         {order.totalAmount.toLocaleString()}원
                       </span>
                     </div>
-                    <button
-                      className="order-action-button complete"
-                      onClick={() => handleOrderStatusChange(order.orderId, getNextStatus(order.status))}
-                    >
-                      제조 완료
-                    </button>
+                    <div className="order-actions">
+                      <button
+                        className="order-action-button complete"
+                        onClick={() => handleOrderStatusChange(order.orderId, getNextStatus(order.status))}
+                      >
+                        제조 완료
+                      </button>
+                    </div>
                   </div>
                 ))
             )}
@@ -468,41 +596,94 @@ function AdminPage() {
             <button 
               className="add-button"
               onClick={() => {
+                if (menus.length === 0) {
+                  alert('옵션을 추가하려면 먼저 메뉴를 등록해주세요')
+                  return
+                }
                 setEditingOption(null)
+                setTargetMenuForOption(null)
                 setShowOptionModal(true)
               }}
             >
               + 옵션 추가
             </button>
           </div>
-          
-          <div className="option-list">
-            {options.map(option => (
-              <div key={option.optionId} className="option-item">
-                <div className="option-info">
-                  <span className="option-name">{option.name}</span>
-                  <span className="option-price">+{option.price.toLocaleString()}원</span>
-                </div>
-                <div className="option-actions">
-                  <button 
-                    className="action-button edit"
-                    onClick={() => {
-                      setEditingOption(option)
-                      setShowOptionModal(true)
-                    }}
-                  >
-                    수정
-                  </button>
-                  <button 
-                    className="action-button delete"
-                    onClick={() => handleOptionDelete(option.optionId)}
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          {menus.length === 0 ? (
+            <div className="option-empty">등록된 메뉴가 없습니다. 먼저 메뉴를 추가해주세요.</div>
+          ) : (
+            <div className="option-menu-groups">
+              {menus.map(menu => {
+                const menuOptions = options.filter(option => option.menuId === menu.menuId)
+                const isExpanded = !!expandedOptionMenus[menu.menuId]
+
+                return (
+                  <div key={menu.menuId} className={`option-menu-card${isExpanded ? '' : ' collapsed'}`}>
+                    <div className="option-menu-header">
+                      <div>
+                        <h3 className="option-menu-name">{menu.name}</h3>
+                        <span className="option-menu-count">옵션 {menuOptions.length}개</span>
+                      </div>
+                      <div className="option-menu-actions">
+                        <button
+                          type="button"
+                          className="option-toggle-button"
+                          onClick={() => toggleOptionSection(menu.menuId)}
+                        >
+                          {isExpanded ? '옵션 접기' : '옵션 펼치기'}
+                        </button>
+                        <button
+                          className="option-add-button"
+                          onClick={() => {
+                            setExpandedOptionMenus(prev => ({ ...prev, [menu.menuId]: true }))
+                            setEditingOption(null)
+                            setTargetMenuForOption(menu)
+                            setShowOptionModal(true)
+                          }}
+                        >
+                          + 옵션 추가
+                        </button>
+                      </div>
+                    </div>
+                    {!isExpanded ? (
+                      <div className="option-collapsed-hint">옵션 목록이 접혀 있습니다</div>
+                    ) : menuOptions.length === 0 ? (
+                      <div className="option-empty">등록된 옵션이 없습니다</div>
+                    ) : (
+                      <div className="option-list-group">
+                        {menuOptions.map(option => (
+                          <div key={option.optionId} className="option-item">
+                            <div className="option-info">
+                              <span className="option-name">{option.name}</span>
+                              <span className="option-price">+{option.price.toLocaleString()}원</span>
+                            </div>
+                            <div className="option-actions">
+                              <button
+                                className="action-button edit"
+                                onClick={() => {
+                                  setEditingOption(option)
+                                  const relatedMenu = menus.find(m => m.menuId === option.menuId) || null
+                                  setTargetMenuForOption(relatedMenu)
+                                  setShowOptionModal(true)
+                                }}
+                              >
+                                수정
+                              </button>
+                              <button
+                                className="action-button delete"
+                                onClick={() => handleOptionDelete(option.optionId)}
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
           </>
         )}
@@ -526,10 +707,13 @@ function AdminPage() {
       {showOptionModal && (
         <OptionModal
           option={editingOption}
+          menus={menus}
+          defaultMenuId={targetMenuForOption?.menuId ?? (menus[0]?.menuId ?? '')}
           onSave={handleOptionSave}
           onClose={() => {
             setShowOptionModal(false)
             setEditingOption(null)
+            setTargetMenuForOption(null)
           }}
         />
       )}
@@ -546,14 +730,53 @@ function MenuModal({ menu, onSave, onClose }) {
     stock: menu?.stock || 0,
     imageUrl: menu?.imageUrl || ''
   })
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(menu?.imageUrl || '')
+  const [uploading, setUploading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      // 파일 크기 체크 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('이미지 크기는 5MB 이하여야 합니다')
+        return
+      }
+
+      // 이미지 타입 체크
+      if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다')
+        return
+      }
+
+      setSelectedImage(file)
+      
+      // 미리보기 생성
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.name || !formData.price) {
       alert('메뉴명과 가격은 필수입니다')
       return
     }
-    onSave(formData)
+
+    setUploading(true)
+    try {
+      // 메뉴 정보와 이미지 파일을 함께 전달
+      await onSave(formData, selectedImage)
+    } catch (error) {
+      console.error('Error:', error)
+      alert('저장 중 오류가 발생했습니다')
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -598,20 +821,25 @@ function MenuModal({ menu, onSave, onClose }) {
             />
           </div>
           <div className="form-group">
-            <label>이미지 URL</label>
+            <label>이미지 업로드</label>
             <input
-              type="text"
-              value={formData.imageUrl}
-              onChange={e => setFormData({...formData, imageUrl: e.target.value})}
-              placeholder="https://example.com/image.jpg"
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
             />
-            {formData.imageUrl && (
-              <img src={formData.imageUrl} alt="미리보기" className="image-preview" />
+            {imagePreview && (
+              <div className="image-preview-container">
+                <img src={imagePreview} alt="미리보기" className="image-preview" />
+              </div>
             )}
           </div>
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="cancel-button">취소</button>
-            <button type="submit" className="save-button">저장</button>
+            <button type="button" onClick={onClose} className="cancel-button" disabled={uploading}>
+              취소
+            </button>
+            <button type="submit" className="save-button" disabled={uploading}>
+              {uploading ? '저장 중...' : '저장'}
+            </button>
           </div>
         </form>
       </div>
@@ -620,19 +848,52 @@ function MenuModal({ menu, onSave, onClose }) {
 }
 
 // 옵션 모달 컴포넌트
-function OptionModal({ option, onSave, onClose }) {
+function OptionModal({ option, menus = [], defaultMenuId, onSave, onClose }) {
   const [formData, setFormData] = useState({
+    menuId: option?.menuId ? String(option.menuId) : defaultMenuId ? String(defaultMenuId) : '',
     name: option?.name || '',
-    price: option?.price || 0
+    price: option ? String(option.price) : '0'
   })
+
+  useEffect(() => {
+    setFormData({
+      menuId: option?.menuId ? String(option.menuId) : defaultMenuId ? String(defaultMenuId) : '',
+      name: option?.name || '',
+      price: option ? String(option.price) : '0'
+    })
+  }, [option, defaultMenuId])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!formData.name) {
+
+    if (!formData.menuId) {
+      alert('연결할 메뉴를 선택해주세요')
+      return
+    }
+
+    const trimmedName = formData.name.trim()
+    if (!trimmedName) {
       alert('옵션명은 필수입니다')
       return
     }
-    onSave(formData)
+
+    const priceValue = formData.price === '' ? 0 : Number(formData.price)
+    if (!Number.isFinite(priceValue)) {
+      alert('가격 형식이 올바르지 않습니다')
+      return
+    }
+
+    const roundedPrice = Math.round(priceValue)
+    if (roundedPrice < 0) {
+      alert('가격은 0 이상의 정수여야 합니다')
+      return
+    }
+
+    onSave({
+      menuId: Number(formData.menuId),
+      name: trimmedName,
+      price: roundedPrice
+    })
   }
 
   return (
@@ -641,11 +902,26 @@ function OptionModal({ option, onSave, onClose }) {
         <h2>{option ? '옵션 수정' : '옵션 추가'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
+            <label>연결 메뉴 *</label>
+            <select
+              value={formData.menuId}
+              onChange={e => setFormData({ ...formData, menuId: e.target.value })}
+              required
+            >
+              <option value="">메뉴를 선택하세요</option>
+              {menus.map(menu => (
+                <option key={menu.menuId} value={menu.menuId}>
+                  {menu.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
             <label>옵션명 *</label>
             <input
               type="text"
               value={formData.name}
-              onChange={e => setFormData({...formData, name: e.target.value})}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
               required
             />
           </div>
@@ -654,7 +930,7 @@ function OptionModal({ option, onSave, onClose }) {
             <input
               type="number"
               value={formData.price}
-              onChange={e => setFormData({...formData, price: e.target.value})}
+              onChange={e => setFormData({ ...formData, price: e.target.value })}
               min="0"
             />
           </div>

@@ -178,6 +178,12 @@
 .inventory-stock {
   text-align: center;
 }
+.order-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 
 .stock-count {
   font-size: 28px;
@@ -196,6 +202,16 @@
   height: 40px;
   background-color: #ffffff;
   border: 2px solid #d4c5b9;
+.order-action-button.cancel {
+  border-color: #c62828;
+  color: #c62828;
+}
+
+.order-action-button.cancel:hover {
+  background-color: #c62828;
+  color: #ffffff;
+}
+
   border-radius: 6px;
   font-size: 20px;
   font-weight: 700;
@@ -406,6 +422,12 @@
     align-items: stretch;
   }
 
+  .order-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .order-action-button {
     width: 100%;
   }
@@ -554,11 +576,105 @@
   background-color: #da190b;
 }
 
-/* 옵션 리스트 */
-.option-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+/* 옵션 관리 영역 */
+.option-menu-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.option-menu-card {
+  background-color: #faf8f5;
+  border: 1px solid #e8e3db;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.option-menu-card.collapsed {
+  background-color: #ffffff;
+}
+
+.option-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.option-menu-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.option-toggle-button {
+  padding: 8px 14px;
+  background-color: #ffffff;
+  border: 1px solid #d4c5b9;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b4c3b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.option-toggle-button:hover {
+  background-color: #f5f0eb;
+}
+
+.option-menu-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #5c4033;
+}
+
+.option-menu-count {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #8d7b6f;
+}
+
+.option-add-button {
+  padding: 8px 16px;
+  background-color: #8b5a3c;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.option-add-button:hover {
+  background-color: #6d4530;
+}
+
+.option-list-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-empty {
+  padding: 16px;
+  background-color: #f0e4d7;
+  color: #6b4c3b;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.option-collapsed-hint {
+  padding: 16px;
+  border: 1px dashed #d4c5b9;
+  border-radius: 6px;
+  background-color: #fff8f2;
+  color: #8d7b6f;
+  text-align: center;
+  font-size: 13px;
 }
 
 .option-item {
@@ -635,7 +751,8 @@
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
@@ -648,11 +765,22 @@
   resize: vertical;
 }
 
-.image-preview {
+.form-group input[type="file"] {
+  padding: 8px;
+  border: 2px dashed #d4c5b9;
+  background-color: #fafafa;
+}
+
+.image-preview-container {
   margin-top: 12px;
+  text-align: center;
+}
+
+.image-preview {
   max-width: 100%;
   max-height: 200px;
   border-radius: 6px;
+  border: 1px solid #e0e0e0;
 }
 
 .modal-actions {

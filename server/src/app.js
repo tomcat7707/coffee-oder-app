@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { query } = require('./config/database');
 
 const app = express();
@@ -14,6 +15,9 @@ app.use(cors({
 
 app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true }));
+
+// 정적 이미지 제공 (업로드된 메뉴 이미지)
+app.use('/images', express.static(path.join(__dirname, '../../ui/public/images')));
 
 // UTF-8 응답 헤더 설정
 app.use((req, res, next) => {

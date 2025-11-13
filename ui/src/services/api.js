@@ -73,6 +73,26 @@ export const menuApi = {
     })
     return response.data
   },
+
+  // 메뉴 이미지 업로드
+  uploadMenuImage: async (menuId, imageFile) => {
+    const formData = new FormData()
+    formData.append('image', imageFile)
+
+    const response = await fetch(`${API_URL}/menus/${menuId}/image`, {
+      method: 'POST',
+      body: formData,
+      // Content-Type을 설정하지 않음 - 브라우저가 자동으로 multipart/form-data로 설정
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || '이미지 업로드에 실패했습니다')
+    }
+
+    return data.data
+  },
 }
 
 // 옵션 관련 API
@@ -85,18 +105,30 @@ export const optionApi = {
 
   // 옵션 추가
   createOption: async (optionData) => {
+    const payload = {
+      menuId: Number(optionData.menuId),
+      name: optionData.name,
+      price: Number(optionData.price),
+    }
+
     const response = await apiCall('/admin/options', {
       method: 'POST',
-      body: JSON.stringify(optionData),
+      body: JSON.stringify(payload),
     })
     return response.data
   },
 
   // 옵션 수정
   updateOption: async (optionId, optionData) => {
+    const payload = {
+      menuId: Number(optionData.menuId),
+      name: optionData.name,
+      price: Number(optionData.price),
+    }
+
     const response = await apiCall(`/admin/options/${optionId}`, {
       method: 'PUT',
-      body: JSON.stringify(optionData),
+      body: JSON.stringify(payload),
     })
     return response.data
   },
@@ -160,6 +192,15 @@ export const orderApi = {
     const response = await apiCall(`/admin/orders/${orderId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    })
+    return response.data
+  },
+
+  // 주문 취소
+  cancelOrder: async (orderId) => {
+    const response = await apiCall(`/admin/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'cancelled' }),
     })
     return response.data
   },

@@ -1,4 +1,4 @@
-const { query } = require('../config/database');
+const { query, getClient } = require('../config/database');
 
 // 주문 통계 조회
 const getStatistics = async (req, res, next) => {
@@ -140,31 +140,30 @@ const updateOrderStatus = async (req, res, next) => {
   try {
     const orderId = parseInt(req.params.orderId);
     const { status } = req.body;
-    
-    // 현재 주문 상태 조회
+
     const currentResult = await query(
       'SELECT status FROM orders WHERE order_id = $1',
       [orderId]
     );
-    
+
     if (currentResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Order not found'
       });
     }
-    
+
     const currentStatus = currentResult.rows[0].status;
-    
-    // 상태 전환 유효성 검증
+
     const validTransitions = {
-      'pending': ['received'],
-      'received': ['inProgress'],
-      'inProgress': ['completed'],
-      'completed': []
+      pending: ['received', 'cancelled'],
+      received: ['inProgress', 'cancelled'],
+      inProgress: ['completed'],
+      completed: [],
+      cancelled: []
     };
-    
-    if (!validTransitions[currentStatus].includes(status)) {
+
+    if (!validTransitions[currentStatus] || !validTransitions[currentStatus].includes(status)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid status transition',
@@ -174,13 +173,53 @@ const updateOrderStatus = async (req, res, next) => {
         }
       });
     }
-    
-    // 상태 업데이트
+
+    if (status === 'cancelled') {
+      const client = await getClient();
+
+      try {
+        await client.query('BEGIN');
+
+        const itemsResult = await client.query(
+          'SELECT menu_id, quantity FROM order_items WHERE order_id = $1',
+          [orderId]
+        );
+
+        for (const item of itemsResult.rows) {
+          await client.query(
+            'UPDATE menus SET stock = stock + $1, updated_at = NOW() WHERE menu_id = $2',
+            [item.quantity, item.menu_id]
+          );
+        }
+
+        const updateResult = await client.query(
+          'UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING order_id, status, updated_at',
+          [status, orderId]
+        );
+
+        await client.query('COMMIT');
+
+        return res.json({
+          success: true,
+          data: {
+            orderId: updateResult.rows[0].order_id,
+            status: updateResult.rows[0].status,
+            updatedAt: updateResult.rows[0].updated_at
+          }
+        });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        return next(error);
+      } finally {
+        client.release();
+      }
+    }
+
     const result = await query(
       'UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING order_id, status, updated_at',
       [status, orderId]
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -194,10 +233,352 @@ const updateOrderStatus = async (req, res, next) => {
   }
 };
 
+// 메뉴 추가
+const createMenu = async (req, res, next) => {
+  try {
+    const { name, description, price, stock, imageUrl } = req.body;
+    
+    // 유효성 검증
+    if (!name || !price) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name and price are required'
+      });
+    }
+    
+    const result = await query(
+      `INSERT INTO menus (name, description, price, stock, image_url) 
+       VALUES ($1, $2, $3, $4, $5) 
+       RETURNING menu_id, name, description, price, stock, image_url`,
+      [name, description || '', parseInt(price), parseInt(stock) || 0, imageUrl || '']
+    );
+    
+    const menu = result.rows[0];
+    
+    res.status(201).json({
+      success: true,
+      data: {
+        menuId: menu.menu_id,
+        name: menu.name,
+        description: menu.description,
+        price: menu.price,
+        stock: menu.stock,
+        imageUrl: menu.image_url
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 메뉴 수정
+const updateMenu = async (req, res, next) => {
+  try {
+    const menuId = parseInt(req.params.menuId);
+    const { name, description, price, stock, imageUrl } = req.body;
+    
+    // 유효성 검증
+    if (!name || !price) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name and price are required'
+      });
+    }
+    
+    const result = await query(
+      `UPDATE menus 
+       SET name = $1, description = $2, price = $3, stock = $4, image_url = $5, updated_at = NOW() 
+       WHERE menu_id = $6 
+       RETURNING menu_id, name, description, price, stock, image_url`,
+      [name, description || '', parseInt(price), parseInt(stock) || 0, imageUrl || '', menuId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found'
+      });
+    }
+    
+    const menu = result.rows[0];
+    
+    res.json({
+      success: true,
+      data: {
+        menuId: menu.menu_id,
+        name: menu.name,
+        description: menu.description,
+        price: menu.price,
+        stock: menu.stock,
+        imageUrl: menu.image_url
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 메뉴 삭제
+const deleteMenu = async (req, res, next) => {
+  try {
+    const menuId = parseInt(req.params.menuId);
+    
+    // 주문 아이템에서 사용 중인지 확인
+    const checkResult = await query(
+      'SELECT COUNT(*) as count FROM order_items WHERE menu_id = $1',
+      [menuId]
+    );
+    
+    if (parseInt(checkResult.rows[0].count) > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot delete menu that has been ordered'
+      });
+    }
+    
+    const result = await query(
+      'DELETE FROM menus WHERE menu_id = $1 RETURNING menu_id',
+      [menuId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        menuId: result.rows[0].menu_id
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 모든 옵션 조회
+const getOptions = async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT o.option_id, o.menu_id, m.name AS menu_name, o.name, o.price
+       FROM options o
+       JOIN menus m ON o.menu_id = m.menu_id
+       ORDER BY o.menu_id, o.option_id`
+    );
+
+    const options = result.rows.map(row => ({
+      optionId: row.option_id,
+      menuId: row.menu_id,
+      menuName: row.menu_name,
+      name: row.name,
+      price: row.price
+    }));
+
+    res.json({
+      success: true,
+      data: options
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 옵션 추가
+const createOption = async (req, res, next) => {
+  try {
+    const { menuId, name, price } = req.body;
+
+    if (!menuId || !Number.isInteger(Number(menuId))) {
+      return res.status(400).json({
+        success: false,
+        error: '유효한 메뉴 ID가 필요합니다'
+      });
+    }
+
+    if (!name || price === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: '옵션명과 가격은 필수입니다'
+      });
+    }
+
+    const parsedMenuId = Number(menuId);
+    const parsedPrice = Number(price);
+
+    if (!Number.isInteger(parsedPrice) || parsedPrice < 0) {
+      return res.status(400).json({
+        success: false,
+        error: '가격은 0 이상의 정수여야 합니다'
+      });
+    }
+
+    const menuResult = await query(
+      'SELECT menu_id, name FROM menus WHERE menu_id = $1',
+      [parsedMenuId]
+    );
+
+    if (menuResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '메뉴를 찾을 수 없습니다'
+      });
+    }
+
+    const result = await query(
+      'INSERT INTO options (menu_id, name, price) VALUES ($1, $2, $3) RETURNING option_id, menu_id, name, price',
+      [parsedMenuId, name, parsedPrice]
+    );
+
+    const option = result.rows[0];
+
+    res.status(201).json({
+      success: true,
+      data: {
+        optionId: option.option_id,
+        menuId: option.menu_id,
+        menuName: menuResult.rows[0].name,
+        name: option.name,
+        price: option.price
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 옵션 수정
+const updateOption = async (req, res, next) => {
+  try {
+    const optionId = Number(req.params.optionId);
+
+    if (!Number.isInteger(optionId)) {
+      return res.status(400).json({
+        success: false,
+        error: '유효한 옵션 ID가 필요합니다'
+      });
+    }
+    const { menuId, name, price } = req.body;
+
+    if (!menuId || !Number.isInteger(Number(menuId))) {
+      return res.status(400).json({
+        success: false,
+        error: '유효한 메뉴 ID가 필요합니다'
+      });
+    }
+
+    if (!name || price === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: '옵션명과 가격은 필수입니다'
+      });
+    }
+
+    const parsedMenuId = Number(menuId);
+    const parsedPrice = Number(price);
+
+    if (!Number.isInteger(parsedPrice) || parsedPrice < 0) {
+      return res.status(400).json({
+        success: false,
+        error: '가격은 0 이상의 정수여야 합니다'
+      });
+    }
+
+    const menuResult = await query(
+      'SELECT menu_id, name FROM menus WHERE menu_id = $1',
+      [parsedMenuId]
+    );
+
+    if (menuResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '메뉴를 찾을 수 없습니다'
+      });
+    }
+
+    const result = await query(
+      'UPDATE options SET menu_id = $1, name = $2, price = $3 WHERE option_id = $4 RETURNING option_id, menu_id, name, price',
+      [parsedMenuId, name, parsedPrice, optionId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '옵션을 찾을 수 없습니다'
+      });
+    }
+
+    const option = result.rows[0];
+
+    res.json({
+      success: true,
+      data: {
+        optionId: option.option_id,
+        menuId: option.menu_id,
+        menuName: menuResult.rows[0].name,
+        name: option.name,
+        price: option.price
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 옵션 삭제
+const deleteOption = async (req, res, next) => {
+  try {
+    const optionId = parseInt(req.params.optionId);
+    
+    // 주문 아이템 옵션에서 사용 중인지 확인
+    const checkResult = await query(
+      'SELECT COUNT(*) as count FROM order_item_options WHERE option_id = $1',
+      [optionId]
+    );
+    
+    if (parseInt(checkResult.rows[0].count) > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot delete option that has been used in orders'
+      });
+    }
+    
+    const result = await query(
+      'DELETE FROM options WHERE option_id = $1 RETURNING option_id',
+      [optionId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Option not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        optionId: result.rows[0].option_id
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStatistics,
   getInventory,
   updateStock,
   getOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  createMenu,
+  updateMenu,
+  deleteMenu,
+  getOptions,
+  createOption,
+  updateOption,
+  deleteOption
 };

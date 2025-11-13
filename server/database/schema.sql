@@ -31,7 +31,7 @@ CREATE TABLE orders (
   order_id SERIAL PRIMARY KEY,
   total_amount INTEGER NOT NULL CHECK (total_amount >= 0),
   status VARCHAR(20) NOT NULL DEFAULT 'pending' 
-    CHECK (status IN ('pending', 'received', 'inProgress', 'completed')),
+    CHECK (status IN ('pending', 'received', 'inProgress', 'completed', 'cancelled')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

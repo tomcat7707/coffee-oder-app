@@ -42,7 +42,7 @@ const validateCreateOrder = (req, res, next) => {
 // 주문 상태 변경 요청 검증
 const validateUpdateOrderStatus = (req, res, next) => {
   const { status } = req.body;
-  const validStatuses = ['pending', 'received', 'inProgress', 'completed'];
+  const validStatuses = ['pending', 'received', 'inProgress', 'completed', 'cancelled'];
 
   if (!status) {
     return next(new AppError('상태 값이 필요합니다', 400));
