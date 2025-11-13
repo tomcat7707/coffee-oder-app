@@ -1,33 +1,38 @@
 const { Pool } = require('pg');
 
 // PostgreSQL 연결 풀 설정
-const poolConfig = process.env.DATABASE_URL
-  ? {
-      // Production: DATABASE_URL 사용
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+let poolConfig;
+
+if (process.env.DATABASE_URL) {
+  // Production: DATABASE_URL 사용
+  poolConfig = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
     }
-  : {
-      // Development: 개별 설정 사용
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT) || 5432,
-      database: process.env.DB_NAME || 'coffee_order_db',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD,
-      ssl: false
-    };
+  };
+} else {
+  // Development: 개별 설정 사용
+  poolConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 5432,
+    database: process.env.DB_NAME || 'coffee_order_db',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD
+  };
+}
 
 const pool = new Pool({
   ...poolConfig,
-  max: 20, // 최대 커넥션 수
-  idleTimeoutMillis: 30000, // 유휴 연결 타임아웃
-  connectionTimeoutMillis: 2000, // 연결 타임아웃
-  client_encoding: 'UTF8' // 클라이언트 인코딩
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000
 });
 
 // 연결 테스트
-pool.on('connect', () => {
+pool.on('connect', (client) => {
   console.log('✅ 데이터베이스 연결 성공');
+  client.query('SET CLIENT_ENCODING TO UTF8');
 });
 
 pool.on('error', (err) => {
