@@ -1,5 +1,8 @@
 // API 기본 URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Production: VITE_API_URL 환경 변수 사용 (Render.com에서 설정)
+// Development: localhost:5000 사용
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const API_URL = `${API_BASE_URL}/api`
 
 // API 호출 헬퍼 함수
 async function apiCall(endpoint, options = {}) {
