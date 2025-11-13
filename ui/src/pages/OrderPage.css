@@ -160,29 +160,33 @@
 
 /* 옵션 선택 */
 .menu-options {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 14px 0;
   border-top: 1px solid #e8e3db;
   border-bottom: 1px solid #e8e3db;
 }
 
 .option-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 10px 12px;
   background-color: #faf8f5;
-  border-radius: 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
   user-select: none;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .option-item:hover {
   background-color: #f5f0eb;
+  border-color: #e0d5c9;
+  box-shadow: 0 2px 6px rgba(107, 68, 35, 0.12);
 }
 
 .option-item input[type="checkbox"] {
@@ -199,7 +203,8 @@
   color: #5c4033;
   font-weight: 500;
   cursor: pointer;
-  white-space: nowrap;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 /* 담기 버튼 */
