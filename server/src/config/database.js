@@ -8,14 +8,21 @@ console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
 let poolConfig;
 
 if (process.env.DATABASE_URL) {
-  // Production: DATABASE_URL 사용
-  console.log('✅ DATABASE_URL 사용 (Production 모드)');
+  // Production: DATABASE_URL을 파싱하여 개별 파라미터로 변환
+  console.log('✅ DATABASE_URL 파싱 중...');
+  const url = new URL(process.env.DATABASE_URL);
+  
   poolConfig = {
-    connectionString: process.env.DATABASE_URL,
+    host: url.hostname,
+    port: parseInt(url.port),
+    database: url.pathname.split('/')[1],
+    user: url.username,
+    password: url.password,
     ssl: {
       rejectUnauthorized: false
     }
   };
+  console.log('✅ 파싱 완료 - Host:', url.hostname);
 } else {
   // Development: 개별 설정 사용
   console.log('✅ 개별 DB 설정 사용 (Development 모드)');
