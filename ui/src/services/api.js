@@ -142,6 +142,57 @@ export const optionApi = {
   },
 }
 
+// 옵션 프리셋 관련 API
+export const optionPresetApi = {
+  // 프리셋 목록 조회
+  getOptionPresets: async () => {
+    const response = await apiCall('/admin/option-presets')
+    return response.data
+  },
+
+  // 프리셋 생성
+  createOptionPreset: async (presetData) => {
+    const payload = {
+      ...presetData,
+      options: (presetData.options || []).map((option) => ({
+        name: option.name,
+        price: Number(option.price),
+      })),
+    }
+
+    const response = await apiCall('/admin/option-presets', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+    return response.data
+  },
+
+  // 프리셋 수정
+  updateOptionPreset: async (presetId, presetData) => {
+    const payload = {
+      ...presetData,
+      options: (presetData.options || []).map((option) => ({
+        name: option.name,
+        price: Number(option.price),
+      })),
+    }
+
+    const response = await apiCall(`/admin/option-presets/${presetId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+    return response.data
+  },
+
+  // 프리셋 삭제
+  deleteOptionPreset: async (presetId) => {
+    const response = await apiCall(`/admin/option-presets/${presetId}`, {
+      method: 'DELETE',
+    })
+    return response.data
+  },
+}
+
 // 재고 관련 API
 export const inventoryApi = {
   // 재고 목록 조회

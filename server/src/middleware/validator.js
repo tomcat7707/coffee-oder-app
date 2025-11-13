@@ -84,9 +84,49 @@ const validateIdParam = (paramName) => {
   };
 };
 
+// 옵션 프리셋 생성/수정 요청 검증
+const validateOptionPresetPayload = (req, res, next) => {
+  const { name, description, options } = req.body;
+
+  if (!name || typeof name !== 'string') {
+    return next(new AppError('프리셋 이름은 필수입니다', 400));
+  }
+
+  if (description !== undefined && typeof description !== 'string') {
+    return next(new AppError('프리셋 설명은 문자열이어야 합니다', 400));
+  }
+
+  if (!Array.isArray(options) || options.length === 0) {
+    return next(new AppError('하나 이상의 옵션이 필요합니다', 400));
+  }
+
+  for (let index = 0; index < options.length; index++) {
+    const option = options[index];
+
+    if (!option || typeof option !== 'object') {
+      return next(new AppError(`옵션 ${index + 1}의 형식이 올바르지 않습니다`, 400));
+    }
+
+    if (!option.name || typeof option.name !== 'string') {
+      return next(new AppError(`옵션 ${index + 1}에 이름이 필요합니다`, 400));
+    }
+
+    if (option.price === undefined || option.price === null) {
+      return next(new AppError(`옵션 ${index + 1}에 가격이 필요합니다`, 400));
+    }
+
+    if (!Number.isInteger(Number(option.price)) || Number(option.price) < 0) {
+      return next(new AppError(`옵션 ${index + 1}의 가격은 0 이상의 정수여야 합니다`, 400));
+    }
+  }
+
+  next();
+};
+
 module.exports = {
   validateCreateOrder,
   validateUpdateOrderStatus,
   validateUpdateStock,
-  validateIdParam
+  validateIdParam,
+  validateOptionPresetPayload
 };

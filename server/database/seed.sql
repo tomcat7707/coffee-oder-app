@@ -19,6 +19,22 @@ INSERT INTO options (menu_id, name, price) VALUES
 (3, E'바닐라 시럽', 500),
 (3, E'헤이즐넛 시럽', 500);
 
+-- Option preset data insertion
+INSERT INTO option_presets (name, description) VALUES
+(E'클래식 시럽 3종', E'라떼류에 자주 사용하는 대표 시럽'),
+(E'에스프레소 강화', E'커피 음료에 추가 샷 구성을 한 번에 적용'),
+(E'우유 변경 프리셋', E'우유 타입 변경 옵션을 빠르게 등록');
+
+INSERT INTO option_preset_options (preset_id, name, price, display_order) VALUES
+(1, E'바닐라 시럽', 500, 1),
+(1, E'헤이즐넛 시럽', 500, 2),
+(1, E'카라멜 시럽', 500, 3),
+(2, E'샷 추가 1', 500, 1),
+(2, E'샷 추가 2', 1000, 2),
+(3, E'저지방 우유', 300, 1),
+(3, E'무지방 우유', 300, 2),
+(3, E'두유 변경', 500, 3);
+
 -- Test order data (optional)
 INSERT INTO orders (total_amount, status) VALUES
 (4000, 'received');
@@ -34,4 +50,5 @@ SELECT 'Seed data inserted successfully!' as message;
 SELECT 
   (SELECT COUNT(*) FROM menus) as menus_count,
   (SELECT COUNT(*) FROM options) as options_count,
+  (SELECT COUNT(*) FROM option_presets) as option_presets_count,
   (SELECT COUNT(*) FROM orders) as orders_count;

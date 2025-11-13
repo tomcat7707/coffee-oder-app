@@ -12,12 +12,17 @@ const {
   getOptions,
   createOption,
   updateOption,
-  deleteOption
+  deleteOption,
+  getOptionPresets,
+  createOptionPreset,
+  updateOptionPreset,
+  deleteOptionPreset
 } = require('../controllers/adminController');
 const {
   validateIdParam,
   validateUpdateStock,
-  validateUpdateOrderStatus
+  validateUpdateOrderStatus,
+  validateOptionPresetPayload
 } = require('../middleware/validator');
 
 // GET /api/admin/statistics - 주문 통계
@@ -57,5 +62,11 @@ router.put('/options/:optionId', validateIdParam('optionId'), updateOption);
 
 // DELETE /api/admin/options/:optionId - 옵션 삭제
 router.delete('/options/:optionId', validateIdParam('optionId'), deleteOption);
+
+// 옵션 프리셋 관리
+router.get('/option-presets', getOptionPresets);
+router.post('/option-presets', validateOptionPresetPayload, createOptionPreset);
+router.put('/option-presets/:presetId', validateIdParam('presetId'), validateOptionPresetPayload, updateOptionPreset);
+router.delete('/option-presets/:presetId', validateIdParam('presetId'), deleteOptionPreset);
 
 module.exports = router;

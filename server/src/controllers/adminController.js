@@ -587,6 +587,270 @@ const deleteOption = async (req, res, next) => {
   }
 };
 
+// 옵션 프리셋 조회
+const getOptionPresets = async (req, res, next) => {
+  try {
+    const presetsResult = await query(
+      `SELECT preset_id, name, description, created_at, updated_at
+       FROM option_presets
+       ORDER BY preset_id`
+    );
+
+    const optionsResult = await query(
+      `SELECT preset_option_id, preset_id, name, price, display_order
+       FROM option_preset_options
+       ORDER BY preset_id, display_order, preset_option_id`
+    );
+
+    const optionMap = optionsResult.rows.reduce((acc, row) => {
+      if (!acc[row.preset_id]) {
+        acc[row.preset_id] = [];
+      }
+      acc[row.preset_id].push({
+        optionPresetOptionId: row.preset_option_id,
+        name: row.name,
+        price: row.price,
+        displayOrder: row.display_order
+      });
+      return acc;
+    }, {});
+
+    const presets = presetsResult.rows.map(row => ({
+      presetId: row.preset_id,
+      name: row.name,
+      description: row.description || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      options: optionMap[row.preset_id] || []
+    }));
+
+    res.json({
+      success: true,
+      data: presets
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 옵션 프리셋 생성
+const createOptionPreset = async (req, res, next) => {
+  const client = await getClient();
+
+  try {
+    const { name, description = '', options = [] } = req.body;
+
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: '프리셋 이름은 필수입니다'
+      });
+    }
+
+    if (!Array.isArray(options) || options.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: '하나 이상의 옵션이 필요합니다'
+      });
+    }
+
+    for (const option of options) {
+      if (!option.name || typeof option.name !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: '모든 옵션에 이름이 필요합니다'
+        });
+      }
+      if (!Number.isInteger(Number(option.price)) || Number(option.price) < 0) {
+        return res.status(400).json({
+          success: false,
+          error: '옵션 가격은 0 이상의 정수여야 합니다'
+        });
+      }
+    }
+
+    await client.query('BEGIN');
+
+    const presetResult = await client.query(
+      `INSERT INTO option_presets (name, description)
+       VALUES ($1, $2)
+       RETURNING preset_id, name, description, created_at, updated_at`,
+      [name.trim(), description.trim()]
+    );
+
+    const presetId = presetResult.rows[0].preset_id;
+
+    for (let index = 0; index < options.length; index++) {
+      const option = options[index];
+      await client.query(
+        `INSERT INTO option_preset_options (preset_id, name, price, display_order)
+         VALUES ($1, $2, $3, $4)`,
+        [presetId, option.name.trim(), Number(option.price), index]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    const createdPreset = {
+      presetId,
+      name: presetResult.rows[0].name,
+      description: presetResult.rows[0].description || '',
+      createdAt: presetResult.rows[0].created_at,
+      updatedAt: presetResult.rows[0].updated_at,
+      options: options.map((option, index) => ({
+        optionPresetOptionId: null,
+        name: option.name.trim(),
+        price: Number(option.price),
+        displayOrder: index
+      }))
+    };
+
+    res.status(201).json({
+      success: true,
+      data: createdPreset
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+};
+
+// 옵션 프리셋 수정
+const updateOptionPreset = async (req, res, next) => {
+  const client = await getClient();
+
+  try {
+    const presetId = Number(req.params.presetId);
+    const { name, description = '', options = [] } = req.body;
+
+    if (!Number.isInteger(presetId) || presetId < 1) {
+      return res.status(400).json({
+        success: false,
+        error: '유효한 프리셋 ID가 필요합니다'
+      });
+    }
+
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: '프리셋 이름은 필수입니다'
+      });
+    }
+
+    if (!Array.isArray(options) || options.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: '하나 이상의 옵션이 필요합니다'
+      });
+    }
+
+    for (const option of options) {
+      if (!option.name || typeof option.name !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: '모든 옵션에 이름이 필요합니다'
+        });
+      }
+      if (!Number.isInteger(Number(option.price)) || Number(option.price) < 0) {
+        return res.status(400).json({
+          success: false,
+          error: '옵션 가격은 0 이상의 정수여야 합니다'
+        });
+      }
+    }
+
+    await client.query('BEGIN');
+
+    const presetResult = await client.query(
+      `UPDATE option_presets
+       SET name = $1, description = $2, updated_at = NOW()
+       WHERE preset_id = $3
+       RETURNING preset_id, name, description, created_at, updated_at`,
+      [name.trim(), description.trim(), presetId]
+    );
+
+    if (presetResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: '프리셋을 찾을 수 없습니다'
+      });
+    }
+
+    await client.query('DELETE FROM option_preset_options WHERE preset_id = $1', [presetId]);
+
+    for (let index = 0; index < options.length; index++) {
+      const option = options[index];
+      await client.query(
+        `INSERT INTO option_preset_options (preset_id, name, price, display_order)
+         VALUES ($1, $2, $3, $4)`,
+        [presetId, option.name.trim(), Number(option.price), index]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    const updatedPreset = {
+      presetId,
+      name: presetResult.rows[0].name,
+      description: presetResult.rows[0].description || '',
+      createdAt: presetResult.rows[0].created_at,
+      updatedAt: presetResult.rows[0].updated_at,
+      options: options.map((option, index) => ({
+        optionPresetOptionId: null,
+        name: option.name.trim(),
+        price: Number(option.price),
+        displayOrder: index
+      }))
+    };
+
+    res.json({
+      success: true,
+      data: updatedPreset
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+};
+
+// 옵션 프리셋 삭제
+const deleteOptionPreset = async (req, res, next) => {
+  try {
+    const presetId = Number(req.params.presetId);
+
+    if (!Number.isInteger(presetId) || presetId < 1) {
+      return res.status(400).json({
+        success: false,
+        error: '유효한 프리셋 ID가 필요합니다'
+      });
+    }
+
+    const result = await query(
+      'DELETE FROM option_presets WHERE preset_id = $1 RETURNING preset_id',
+      [presetId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '프리셋을 찾을 수 없습니다'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { presetId }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStatistics,
   getInventory,
@@ -599,5 +863,9 @@ module.exports = {
   getOptions,
   createOption,
   updateOption,
-  deleteOption
+  deleteOption,
+  getOptionPresets,
+  createOptionPreset,
+  updateOptionPreset,
+  deleteOptionPreset
 };

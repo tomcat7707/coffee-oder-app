@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { statisticsApi, inventoryApi, orderApi, menuApi, optionApi } from '../services/api'
+import { statisticsApi, inventoryApi, orderApi, menuApi, optionApi, optionPresetApi } from '../services/api'
 import './AdminPage.css'
 
 function AdminPage() {
@@ -16,15 +16,19 @@ function AdminPage() {
   const [orders, setOrders] = useState([])
   const [menus, setMenus] = useState([])
   const [options, setOptions] = useState([])
+  const [optionPresets, setOptionPresets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   
   // 모달 상태
   const [showMenuModal, setShowMenuModal] = useState(false)
   const [showOptionModal, setShowOptionModal] = useState(false)
+  const [showPresetModal, setShowPresetModal] = useState(false)
+  const [showPresetManagerModal, setShowPresetManagerModal] = useState(false)
   const [editingMenu, setEditingMenu] = useState(null)
   const [editingOption, setEditingOption] = useState(null)
   const [targetMenuForOption, setTargetMenuForOption] = useState(null)
+  const [presetTargetMenu, setPresetTargetMenu] = useState(null)
   const [expandedOptionMenus, setExpandedOptionMenus] = useState({})
 
   // 데이터 로드
@@ -38,12 +42,13 @@ function AdminPage() {
       setError(null)
       
       // 통계, 재고, 주문 데이터 병렬 로드
-      const [statsData, inventoryData, ordersData, menusData, optionsData] = await Promise.all([
+      const [statsData, inventoryData, ordersData, menusData, optionsData, presetsData] = await Promise.all([
         statisticsApi.getStatistics(),
         inventoryApi.getInventory(),
         orderApi.getOrders(),
         menuApi.getAllMenus(),
-        optionApi.getAllOptions()
+        optionApi.getAllOptions(),
+        optionPresetApi.getOptionPresets()
       ])
       
       setStatistics(statsData)
@@ -51,6 +56,7 @@ function AdminPage() {
       setOrders(ordersData)
       setMenus(menusData)
       setOptions(optionsData)
+      setOptionPresets(presetsData)
       setExpandedOptionMenus(prev => {
         const nextState = {}
         menusData.forEach(menu => {
@@ -277,6 +283,67 @@ function AdminPage() {
     } catch (err) {
       console.error('Failed to delete option:', err)
       alert(err.message || '옵션 삭제에 실패했습니다')
+    }
+  }
+
+  const handlePresetApply = async (menuId, preset) => {
+    if (!preset) return
+
+    try {
+      for (const presetOption of preset.options) {
+        await optionApi.createOption({
+          menuId,
+          name: presetOption.name,
+          price: presetOption.price,
+        })
+      }
+
+      await loadData()
+      setExpandedOptionMenus(prev => ({
+        ...prev,
+        [menuId]: true,
+      }))
+      alert(`${preset.name} 프리셋이 적용되었습니다.`)
+    } catch (err) {
+      console.error('Failed to apply preset:', err)
+      alert(err.message || '프리셋 적용에 실패했습니다')
+    }
+  }
+
+  const refreshOptionPresets = async () => {
+    const presets = await optionPresetApi.getOptionPresets()
+    setOptionPresets(presets)
+  }
+
+  const handleOptionPresetCreate = async (presetData) => {
+    try {
+      const created = await optionPresetApi.createOptionPreset(presetData)
+      await refreshOptionPresets()
+      return created
+    } catch (err) {
+      console.error('Failed to create option preset:', err)
+      throw err
+    }
+  }
+
+  const handleOptionPresetUpdate = async (presetId, presetData) => {
+    try {
+      const updated = await optionPresetApi.updateOptionPreset(presetId, presetData)
+      await refreshOptionPresets()
+      return updated
+    } catch (err) {
+      console.error('Failed to update option preset:', err)
+      throw err
+    }
+  }
+
+  const handleOptionPresetDelete = async (presetId) => {
+    try {
+      await optionPresetApi.deleteOptionPreset(presetId)
+      await refreshOptionPresets()
+    } catch (err) {
+      console.error('Failed to delete option preset:', err)
+      throw err
     }
   }
 
@@ -647,20 +714,38 @@ function AdminPage() {
         <section className="option-management-section">
           <div className="section-header">
             <h2 className="section-title">옵션 관리</h2>
-            <button 
-              className="add-button"
-              onClick={() => {
-                if (menus.length === 0) {
-                  alert('옵션을 추가하려면 먼저 메뉴를 등록해주세요')
-                  return
-                }
-                setEditingOption(null)
-                setTargetMenuForOption(null)
-                setShowOptionModal(true)
-              }}
-            >
-              + 옵션 추가
-            </button>
+            <div className="section-header-actions">
+              <button
+                className="preset-manage-button"
+                type="button"
+                onClick={async () => {
+                  try {
+                    await refreshOptionPresets()
+                  } catch (err) {
+                    console.error('Failed to load option presets:', err)
+                    alert(err.message || '프리셋 정보를 불러오는데 실패했습니다')
+                    return
+                  }
+                  setShowPresetManagerModal(true)
+                }}
+              >
+                프리셋 관리
+              </button>
+              <button 
+                className="add-button"
+                onClick={() => {
+                  if (menus.length === 0) {
+                    alert('옵션을 추가하려면 먼저 메뉴를 등록해주세요')
+                    return
+                  }
+                  setEditingOption(null)
+                  setTargetMenuForOption(null)
+                  setShowOptionModal(true)
+                }}
+              >
+                + 옵션 추가
+              </button>
+            </div>
           </div>
           {menus.length === 0 ? (
             <div className="option-empty">등록된 메뉴가 없습니다. 먼저 메뉴를 추가해주세요.</div>
@@ -684,6 +769,16 @@ function AdminPage() {
                           onClick={() => toggleOptionSection(menu.menuId)}
                         >
                           {isExpanded ? '옵션 접기' : '옵션 펼치기'}
+                        </button>
+                        <button
+                          type="button"
+                          className="option-preset-button"
+                          onClick={() => {
+                            setPresetTargetMenu(menu)
+                            setShowPresetModal(true)
+                          }}
+                        >
+                          프리셋 적용
                         </button>
                         <button
                           className="option-add-button"
@@ -781,13 +876,46 @@ function AdminPage() {
         <OptionModal
           option={editingOption}
           menus={menus}
+          lockedMenu={targetMenuForOption}
           defaultMenuId={targetMenuForOption?.menuId ?? (menus[0]?.menuId ?? '')}
+          presets={optionPresets}
           onSave={handleOptionSave}
           onClose={() => {
             setShowOptionModal(false)
             setEditingOption(null)
             setTargetMenuForOption(null)
           }}
+        />
+      )}
+
+      {showPresetModal && presetTargetMenu && (
+        <OptionPresetModal
+          menu={presetTargetMenu}
+          presets={optionPresets}
+          onApply={async (presetId) => {
+            const preset = optionPresets.find(item => item.presetId === presetId)
+            if (!preset) {
+              alert('선택한 프리셋을 찾을 수 없습니다')
+              return
+            }
+            await handlePresetApply(presetTargetMenu.menuId, preset)
+            setShowPresetModal(false)
+            setPresetTargetMenu(null)
+          }}
+          onClose={() => {
+            setShowPresetModal(false)
+            setPresetTargetMenu(null)
+          }}
+        />
+      )}
+
+      {showPresetManagerModal && (
+        <OptionPresetManagerModal
+          presets={optionPresets}
+          onCreate={handleOptionPresetCreate}
+          onUpdate={handleOptionPresetUpdate}
+          onDelete={handleOptionPresetDelete}
+          onClose={() => setShowPresetManagerModal(false)}
         />
       )}
     </div>
@@ -921,25 +1049,45 @@ function MenuModal({ menu, onSave, onClose }) {
 }
 
 // 옵션 모달 컴포넌트
-function OptionModal({ option, menus = [], defaultMenuId, onSave, onClose }) {
+function OptionModal({ option, menus = [], lockedMenu = null, defaultMenuId, presets = [], onSave, onClose }) {
+  const lockedMenuId = lockedMenu?.menuId ? String(lockedMenu.menuId) : null
+  const resolveMenuId = () => {
+    if (option?.menuId) return String(option.menuId)
+    if (lockedMenuId) return lockedMenuId
+    return defaultMenuId ? String(defaultMenuId) : ''
+  }
+
   const [formData, setFormData] = useState({
-    menuId: option?.menuId ? String(option.menuId) : defaultMenuId ? String(defaultMenuId) : '',
+    menuId: resolveMenuId(),
     name: option?.name || '',
     price: option ? String(option.price) : '0'
   })
 
   useEffect(() => {
     setFormData({
-      menuId: option?.menuId ? String(option.menuId) : defaultMenuId ? String(defaultMenuId) : '',
+      menuId: resolveMenuId(),
       name: option?.name || '',
       price: option ? String(option.price) : '0'
     })
-  }, [option, defaultMenuId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [option, defaultMenuId, lockedMenuId])
+
+  const applyPresetOption = (presetOption) => {
+    if (!presetOption) return
+
+    setFormData(prev => ({
+      ...prev,
+      name: presetOption.name,
+      price: String(Number(presetOption.price) || 0)
+    }))
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
 
-    if (!formData.menuId) {
+    const targetMenuId = lockedMenuId ?? formData.menuId
+
+    if (!targetMenuId) {
       alert('연결할 메뉴를 선택해주세요')
       return
     }
@@ -963,32 +1111,80 @@ function OptionModal({ option, menus = [], defaultMenuId, onSave, onClose }) {
     }
 
     onSave({
-      menuId: Number(formData.menuId),
+      menuId: Number(targetMenuId),
       name: trimmedName,
       price: roundedPrice
     })
   }
+
+  const hasPresets = Array.isArray(presets) && presets.length > 0
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <h2>{option ? '옵션 수정' : '옵션 추가'}</h2>
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>연결 메뉴 *</label>
-            <select
-              value={formData.menuId}
-              onChange={e => setFormData({ ...formData, menuId: e.target.value })}
-              required
-            >
-              <option value="">메뉴를 선택하세요</option>
-              {menus.map(menu => (
-                <option key={menu.menuId} value={menu.menuId}>
-                  {menu.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {lockedMenuId ? (
+            <div className="form-static">
+              <label>대상 메뉴</label>
+              <div className="form-static-value">{lockedMenu?.name || ''}</div>
+            </div>
+          ) : (
+            <div className="form-group">
+              <label>연결 메뉴 *</label>
+              <select
+                value={formData.menuId}
+                onChange={e => setFormData({ ...formData, menuId: e.target.value })}
+                required
+              >
+                <option value="">메뉴를 선택하세요</option>
+                {menus.map(menu => (
+                  <option key={menu.menuId} value={menu.menuId}>
+                    {menu.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {hasPresets && (
+            <div className="preset-quick-section">
+              <div className="preset-quick-header">
+                <span className="preset-quick-title">프리셋에서 불러오기</span>
+                <span className="preset-quick-hint">옵션명을 클릭하면 아래 입력이 채워집니다</span>
+              </div>
+              <div className="preset-quick-list">
+                {presets.map(preset => (
+                  <div key={preset.presetId} className="preset-quick-card">
+                    <div className="preset-quick-card-header">
+                      <span className="preset-quick-card-title">{preset.name}</span>
+                      {preset.description && (
+                        <span className="preset-quick-card-description">{preset.description}</span>
+                      )}
+                    </div>
+                    <div className="preset-quick-options">
+                      {(preset.options || []).length === 0 ? (
+                        <span className="preset-quick-empty">등록된 옵션이 없습니다</span>
+                      ) : (
+                        preset.options.map(optionItem => (
+                          <button
+                            type="button"
+                            key={`${preset.presetId}-${optionItem.optionPresetOptionId || optionItem.name}`}
+                            className="preset-quick-option"
+                            onClick={() => applyPresetOption(optionItem)}
+                          >
+                            <span>{optionItem.name}</span>
+                            <span className="preset-quick-option-price">+{Number(optionItem.price).toLocaleString()}원</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="form-group">
             <label>옵션명 *</label>
             <input
@@ -1012,6 +1208,361 @@ function OptionModal({ option, menus = [], defaultMenuId, onSave, onClose }) {
             <button type="submit" className="save-button">저장</button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+function OptionPresetModal({ menu, presets = [], onApply, onClose }) {
+  const [selectedPresetId, setSelectedPresetId] = useState(presets[0]?.presetId || '')
+
+  useEffect(() => {
+    if (presets.length > 0 && !selectedPresetId) {
+      setSelectedPresetId(presets[0].presetId)
+    }
+  }, [presets, selectedPresetId])
+
+  const selectedPreset = presets.find(preset => preset.presetId === selectedPresetId) || null
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!selectedPresetId) {
+      alert('적용할 프리셋을 선택해주세요')
+      return
+    }
+
+    await onApply(selectedPresetId)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content large" onClick={e => e.stopPropagation()}>
+        <h2>{menu ? `${menu.name} - 프리셋 적용` : '프리셋 적용'}</h2>
+        <form onSubmit={handleSubmit} className="preset-form">
+          <div className="form-group">
+            <label>프리셋 선택 *</label>
+            <div className="preset-list">
+              {presets.length === 0 ? (
+                <div className="preset-empty">등록된 프리셋이 없습니다.</div>
+              ) : (
+                presets.map(preset => (
+                  <label key={preset.presetId} className={`preset-card${selectedPresetId === preset.presetId ? ' selected' : ''}`}>
+                    <div className="preset-card-header">
+                      <input
+                        type="radio"
+                        name="preset"
+                        value={preset.presetId}
+                        checked={selectedPresetId === preset.presetId}
+                        onChange={() => setSelectedPresetId(preset.presetId)}
+                      />
+                      <div className="preset-card-title">{preset.name}</div>
+                    </div>
+                    {preset.description && (
+                      <p className="preset-card-description">{preset.description}</p>
+                    )}
+                    <ul className="preset-option-list">
+                      {(preset.options || []).map((option, index) => (
+                        <li key={option.optionPresetOptionId || `${preset.presetId}-${index}`}>
+                          <span className="preset-option-name">{option.name}</span>
+                          <span className="preset-option-price">+{Number(option.price).toLocaleString()}원</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="cancel-button">취소</button>
+            <button type="submit" className="save-button" disabled={presets.length === 0}>적용</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function OptionPresetManagerModal({ presets = [], onCreate, onUpdate, onDelete, onClose }) {
+  const buildFormFromPreset = (preset) => ({
+    name: preset?.name || '',
+    description: preset?.description || '',
+    options: (preset?.options || []).length > 0
+      ? preset.options.map(option => ({
+          name: option.name,
+          price: String(Number(option.price) || 0)
+        }))
+      : [{ name: '', price: '0' }]
+  })
+
+  const [selectedPresetId, setSelectedPresetId] = useState(presets[0]?.presetId ?? null)
+  const [formData, setFormData] = useState(buildFormFromPreset(presets[0]))
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [pendingSelectId, setPendingSelectId] = useState(null)
+
+  useEffect(() => {
+    if (pendingSelectId) {
+      const pendingPreset = presets.find(preset => preset.presetId === pendingSelectId)
+      if (pendingPreset) {
+        setSelectedPresetId(pendingPreset.presetId)
+        setFormData(buildFormFromPreset(pendingPreset))
+        setPendingSelectId(null)
+        return
+      }
+    }
+
+    if (selectedPresetId === null) {
+      if (presets.length === 0) {
+        setFormData(buildFormFromPreset(null))
+      }
+      return
+    }
+
+    if (presets.length === 0) {
+      setSelectedPresetId(null)
+      setFormData(buildFormFromPreset(null))
+      return
+    }
+
+    const matched = presets.find(preset => preset.presetId === selectedPresetId)
+    if (matched) {
+      setFormData(buildFormFromPreset(matched))
+    } else {
+      setSelectedPresetId(presets[0].presetId)
+      setFormData(buildFormFromPreset(presets[0]))
+    }
+  }, [presets, selectedPresetId, pendingSelectId])
+
+  const handleCreateNew = () => {
+    setSelectedPresetId(null)
+    setFormData({ name: '', description: '', options: [{ name: '', price: '0' }] })
+  }
+
+  const handleOptionFieldChange = (index, field, value) => {
+    setFormData(prev => {
+      const nextOptions = prev.options.map((option, idx) => (
+        idx === index ? { ...option, [field]: value } : option
+      ))
+      return { ...prev, options: nextOptions }
+    })
+  }
+
+  const handleAddOptionRow = () => {
+    setFormData(prev => ({
+      ...prev,
+      options: [...prev.options, { name: '', price: '0' }]
+    }))
+  }
+
+  const handleRemoveOptionRow = (index) => {
+    setFormData(prev => {
+      if (prev.options.length === 1) {
+        alert('옵션은 최소 1개 이상이어야 합니다')
+        return prev
+      }
+
+      return {
+        ...prev,
+        options: prev.options.filter((_, idx) => idx !== index)
+      }
+    })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    const trimmedName = formData.name.trim()
+    if (!trimmedName) {
+      alert('프리셋 이름을 입력해주세요')
+      return
+    }
+
+    const validOptions = formData.options.map(option => ({
+      name: option.name.trim(),
+      price: option.price === '' ? 0 : Number(option.price)
+    }))
+
+    if (validOptions.some(option => !option.name)) {
+      alert('모든 옵션에 이름을 입력해주세요')
+      return
+    }
+
+    if (validOptions.some(option => !Number.isInteger(option.price) || option.price < 0)) {
+      alert('옵션 가격은 0 이상의 정수여야 합니다')
+      return
+    }
+
+    const payload = {
+      name: trimmedName,
+      description: formData.description.trim(),
+      options: validOptions
+    }
+
+    setSaving(true)
+    try {
+      if (selectedPresetId) {
+        const updated = await onUpdate(selectedPresetId, payload)
+        if (updated?.presetId) {
+          setPendingSelectId(updated.presetId)
+        } else {
+          setPendingSelectId(selectedPresetId)
+        }
+        alert('프리셋이 저장되었습니다')
+      } else {
+        const created = await onCreate(payload)
+        if (created?.presetId) {
+          setPendingSelectId(created.presetId)
+        }
+        alert('새 프리셋이 생성되었습니다')
+      }
+    } catch (err) {
+      console.error('Failed to save preset:', err)
+      alert(err.message || '프리셋 저장에 실패했습니다')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!selectedPresetId) {
+      alert('삭제할 프리셋을 선택해주세요')
+      return
+    }
+
+    if (!confirm('정말 이 프리셋을 삭제하시겠습니까?')) {
+      return
+    }
+
+    setDeleting(true)
+    try {
+      await onDelete(selectedPresetId)
+      alert('프리셋이 삭제되었습니다')
+      setSelectedPresetId(null)
+      setFormData({ name: '', description: '', options: [{ name: '', price: '0' }] })
+    } catch (err) {
+      console.error('Failed to delete preset:', err)
+      alert(err.message || '프리셋 삭제에 실패했습니다')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content large" onClick={e => e.stopPropagation()}>
+        <h2>옵션 프리셋 관리</h2>
+        <div className="preset-manager">
+          <aside className="preset-manager-sidebar">
+            <div className="preset-manager-sidebar-header">
+              <span className="preset-manager-sidebar-title">프리셋 목록</span>
+              <button type="button" className="preset-manager-new" onClick={handleCreateNew}>
+                + 새 프리셋
+              </button>
+            </div>
+            <div className="preset-manager-list">
+              {presets.length === 0 ? (
+                <div className="preset-manager-empty">등록된 프리셋이 없습니다</div>
+              ) : (
+                presets.map(preset => (
+                  <button
+                    key={preset.presetId}
+                    type="button"
+                    className={`preset-manager-item${selectedPresetId === preset.presetId ? ' active' : ''}`}
+                    onClick={() => {
+                      setSelectedPresetId(preset.presetId)
+                      setFormData(buildFormFromPreset(preset))
+                    }}
+                  >
+                    <span className="preset-manager-item-name">{preset.name}</span>
+                    <span className="preset-manager-item-count">{(preset.options || []).length}개</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </aside>
+          <div className="preset-manager-form">
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>프리셋 이름 *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="예: 라떼 기본 옵션"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>설명</label>
+                <textarea
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                  placeholder="프리셋 사용 목적을 메모해두세요"
+                />
+              </div>
+              <div className="preset-option-editor">
+                <div className="preset-option-editor-header">
+                  <span>옵션 목록 *</span>
+                  <button type="button" className="preset-option-add-button" onClick={handleAddOptionRow}>
+                    + 옵션 추가
+                  </button>
+                </div>
+                <div className="preset-option-editor-list">
+                  {formData.options.map((option, index) => (
+                    <div key={index} className="preset-option-row">
+                      <input
+                        type="text"
+                        value={option.name}
+                        onChange={e => handleOptionFieldChange(index, 'name', e.target.value)}
+                        placeholder="옵션명"
+                        required
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        value={option.price}
+                        onChange={e => handleOptionFieldChange(index, 'price', e.target.value)}
+                        placeholder="추가 금액"
+                      />
+                      <button
+                        type="button"
+                        className="preset-option-remove"
+                        onClick={() => handleRemoveOptionRow(index)}
+                        disabled={formData.options.length === 1}
+                        title={formData.options.length === 1 ? '옵션은 최소 1개 이상 필요합니다' : '옵션 삭제'}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="preset-manager-actions">
+                <button type="button" className="cancel-button" onClick={onClose} disabled={saving || deleting}>
+                  닫기
+                </button>
+                <div className="preset-manager-primary-actions">
+                  {selectedPresetId && (
+                    <button
+                      type="button"
+                      className="delete-button"
+                      onClick={handleDelete}
+                      disabled={saving || deleting}
+                    >
+                      {deleting ? '삭제 중...' : '프리셋 삭제'}
+                    </button>
+                  )}
+                  <button type="submit" className="save-button" disabled={saving || deleting}>
+                    {saving ? '저장 중...' : selectedPresetId ? '변경 저장' : '프리셋 생성'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   )
