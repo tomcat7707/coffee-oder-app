@@ -699,7 +699,26 @@ function AdminPage() {
                       </div>
                     </div>
                     {!isExpanded ? (
-                      <div className="option-collapsed-hint">옵션 목록이 접혀 있습니다</div>
+                      menuOptions.length === 0 ? (
+                        <div className="option-collapsed-hint empty">등록된 옵션이 없습니다</div>
+                      ) : (
+                        <div className="option-collapsed-hint">
+                          <span className="collapsed-label">옵션 미리보기</span>
+                          <div className="collapsed-options">
+                            {menuOptions.slice(0, 3).map(option => (
+                              <span key={option.optionId} className="collapsed-option-pill">
+                                <span>{option.name}</span>
+                                {option.price > 0 && (
+                                  <span className="collapsed-option-price">+{option.price.toLocaleString()}원</span>
+                                )}
+                              </span>
+                            ))}
+                            {menuOptions.length > 3 && (
+                              <span className="collapsed-more">+{menuOptions.length - 3}개</span>
+                            )}
+                          </div>
+                        </div>
+                      )
                     ) : menuOptions.length === 0 ? (
                       <div className="option-empty">등록된 옵션이 없습니다</div>
                     ) : (
