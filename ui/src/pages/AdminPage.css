@@ -65,12 +65,11 @@
 
 /* 공통 섹션 스타일 */
 .section-title {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   color: #3e2723;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e8e3db;
+  margin: 0;
+  letter-spacing: -0.5px;
 }
 
 /* 관리자 대시보드 */
@@ -181,7 +180,8 @@
 .order-actions {
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
+  padding-top: 2px;
 }
 
 
@@ -272,36 +272,187 @@
   margin: 0;
 }
 
+/* 주문 카드 */
 .order-item {
-  background-color: #faf8f5;
-  border: 1px solid #e8e3db;
-  border-radius: 8px;
-  padding: 16px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  transition: all 0.2s;
+  background-color: #ffffff;
+  border: 2px solid #e8e3db;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .order-item:hover {
-  background-color: #f5f0eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 /* 제조중인 주문 강조 */
 .order-item.in-progress {
-  background-color: #fff8e1;
+  background-color: #fffbf5;
   border: 2px solid #ffb74d;
-  box-shadow: 0 2px 8px rgba(255, 183, 77, 0.2);
+  box-shadow: 0 4px 12px rgba(255, 183, 77, 0.25);
 }
 
 .order-item.in-progress:hover {
-  background-color: #fff3cd;
+  box-shadow: 0 6px 16px rgba(255, 183, 77, 0.35);
+}
+
+/* 주문 헤더 */
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f8f6f3 0%, #faf8f5 100%);
+  border-bottom: 1px solid #e8e3db;
+}
+
+.order-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.order-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #ffffff;
+  border: 1px solid #d4c5b9;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5c4033;
+}
+
+.order-time-badge svg {
+  flex-shrink: 0;
+}
+
+.order-id-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: #8b5a3c;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.order-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.total-label {
+  font-size: 13px;
+  color: #8d6e63;
+  font-weight: 500;
+}
+
+.total-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: #6b4423;
+}
+
+/* 주문 아이템 컨테이너 */
+.order-items-container {
+  padding: 20px;
+  background-color: #ffffff;
+}
+
+.menu-item-card {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background-color: #faf8f5;
+  border: 1px solid #e8e3db;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.menu-item-card:last-child {
+  margin-bottom: 0;
+}
+
+.menu-item-card:hover {
+  background-color: #f5f0eb;
+  border-color: #d4c5b9;
+}
+
+.menu-item-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menu-name-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.menu-bullet {
+  font-size: 20px;
+  color: #8b5a3c;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.menu-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #3e2723;
+}
+
+.menu-quantity {
+  font-size: 16px;
+  font-weight: 600;
+  color: #6b4423;
+  background-color: #ffffff;
+  padding: 5px 14px;
+  border-radius: 12px;
+  border: 1px solid #d4c5b9;
+}
+
+.menu-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.option-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background-color: #fff8f0;
+  border: 1px solid #e8d5c4;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b4c3b;
+  white-space: nowrap;
+}
+
+.option-tag svg {
+  flex-shrink: 0;
+  color: #8b5a3c;
+  width: 14px;
+  height: 14px;
 }
 
 .order-info {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 20px;
   flex: 1;
   flex-wrap: wrap;
@@ -312,6 +463,45 @@
   color: #5c4033;
   font-weight: 500;
   min-width: 120px;
+  padding-top: 2px;
+}
+
+.order-items-detail {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.order-item-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid #e8e3db;
+}
+
+.order-item-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.order-item-row:first-child {
+  padding-top: 0;
+}
+
+.item-menu {
+  font-size: 15px;
+  color: #3e2723;
+  font-weight: 600;
+}
+
+.item-options {
+  font-size: 13px;
+  color: #8b7355;
+  font-weight: 500;
+  padding-left: 12px;
 }
 
 .order-items {
@@ -328,6 +518,15 @@
   color: #6b4423;
   min-width: 100px;
   text-align: right;
+}
+
+.order-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: #faf8f5;
+  border-top: 1px solid #e8e3db;
 }
 
 .order-action-button {
@@ -476,30 +675,36 @@
 /* 메뉴 관리 섹션 */
 .menu-management-section,
 .option-management-section {
+  display: block !important;
+  width: 100% !important;
   background: #ffffff;
   border-radius: 12px;
-  padding: 24px;
+  padding: 28px;
   margin-bottom: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .section-header {
-  display: flex;
+  display: flex !important;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e8e3db;
+  width: 100%;
 }
 
 .add-button {
-  padding: 10px 20px;
+  padding: 12px 24px;
   background-color: #8b5a3c;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(139, 90, 60, 0.2);
 }
 
 .add-button:hover {
@@ -509,6 +714,8 @@
 /* 메뉴 테이블 */
 .menu-table {
   overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e8e3db;
 }
 
 .menu-table table {
@@ -518,29 +725,51 @@
 
 .menu-table th,
 .menu-table td {
-  padding: 12px;
+  padding: 16px 12px;
   text-align: left;
   border-bottom: 1px solid #e8e3db;
+  vertical-align: middle;
 }
 
 .menu-table th {
   background-color: #f5f0eb;
   font-weight: 600;
   color: #5c4033;
+  font-size: 15px;
+  text-align: center;
+}
+
+.menu-table td {
+  font-size: 14px;
+  color: #3e2723;
+}
+
+.menu-table td:first-child {
+  text-align: center;
+}
+
+.menu-table td:nth-child(4),
+.menu-table td:nth-child(5) {
+  text-align: center;
+}
+
+.menu-table td:last-child {
+  text-align: center;
 }
 
 .menu-thumbnail {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .menu-thumbnail-placeholder {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   background-color: #f0f0f0;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -549,13 +778,18 @@
 }
 
 .action-button {
-  padding: 6px 12px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  margin-right: 8px;
-  transition: all 0.3s;
+  margin-right: 6px;
+  transition: all 0.2s;
+}
+
+.action-button:last-child {
+  margin-right: 0;
 }
 
 .action-button.edit {
@@ -565,6 +799,7 @@
 
 .action-button.edit:hover {
   background-color: #45a049;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
 }
 
 .action-button.delete {
@@ -574,6 +809,7 @@
 
 .action-button.delete:hover {
   background-color: #da190b;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
 }
 
 /* 옵션 관리 영역 */
@@ -585,34 +821,37 @@
 
 .option-menu-card {
   background-color: #faf8f5;
-  border: 1px solid #e8e3db;
-  border-radius: 10px;
-  padding: 20px;
+  border: 2px solid #e8e3db;
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.3s;
 }
 
 .option-menu-card.collapsed {
   background-color: #ffffff;
+  border-color: #d4c5b9;
 }
 
 .option-menu-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  gap: 20px;
 }
 
 .option-menu-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
 .option-toggle-button {
-  padding: 8px 14px;
+  padding: 10px 18px;
   background-color: #ffffff;
   border: 1px solid #d4c5b9;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
   color: #6b4c3b;
   cursor: pointer;
@@ -621,35 +860,45 @@
 
 .option-toggle-button:hover {
   background-color: #f5f0eb;
+  border-color: #8b5a3c;
 }
 
 .option-menu-name {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
-  color: #5c4033;
+  color: #3e2723;
+  letter-spacing: -0.3px;
 }
 
 .option-menu-count {
-  display: block;
-  margin-top: 4px;
+  display: inline-block;
+  margin-left: 12px;
+  padding: 4px 12px;
+  background-color: #fff8f0;
+  border: 1px solid #e8d5c4;
+  border-radius: 12px;
   font-size: 13px;
-  color: #8d7b6f;
+  font-weight: 600;
+  color: #8b5a3c;
 }
 
 .option-add-button {
-  padding: 8px 16px;
+  padding: 10px 20px;
   background-color: #8b5a3c;
   color: #ffffff;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(139, 90, 60, 0.2);
 }
 
 .option-add-button:hover {
   background-color: #6d4530;
+  box-shadow: 0 3px 6px rgba(139, 90, 60, 0.3);
 }
 
 .option-list-group {
@@ -681,28 +930,34 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background-color: #f5f0eb;
-  border-radius: 8px;
+  padding: 18px 20px;
+  background-color: #ffffff;
+  border-radius: 10px;
   border: 1px solid #e8e3db;
+  transition: all 0.2s;
+}
+
+.option-item:hover {
+  border-color: #d4c5b9;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .option-info {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: baseline;
+  gap: 16px;
 }
 
 .option-name {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: #3e2723;
 }
 
 .option-price {
-  font-size: 14px;
+  font-size: 15px;
   color: #8b5a3c;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .option-actions {

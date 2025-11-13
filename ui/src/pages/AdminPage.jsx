@@ -442,22 +442,49 @@ function AdminPage() {
                 .filter(order => order.status === 'received' || order.status === 'pending')
                 .map(order => (
                   <div key={order.orderId} className="order-item">
-                    <div className="order-info">
-                      <span className="order-date">
-                        {formatDate(order.createdAt)}
-                      </span>
-                      <span className="order-items">
-                        {order.items.map((item, idx) => (
-                          <span key={idx}>
-                            {item.menuName} x {item.quantity}
-                            {idx < order.items.length - 1 ? ', ' : ''}
-                          </span>
-                        ))}
-                      </span>
-                      <span className="order-amount">
-                        {order.totalAmount.toLocaleString()}원
-                      </span>
+                    <div className="order-header">
+                      <div className="order-header-info">
+                        <span className="order-time-badge">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          {formatDate(order.createdAt)}
+                        </span>
+                        <span className="order-id-badge">주문 #{order.orderId}</span>
+                      </div>
+                      <div className="order-total">
+                        <span className="total-label">합계</span>
+                        <span className="total-amount">{order.totalAmount.toLocaleString()}원</span>
+                      </div>
                     </div>
+                    
+                    <div className="order-items-container">
+                      {order.items.map((item, idx) => (
+                        <div key={idx} className="menu-item-card">
+                          <div className="menu-item-main">
+                            <div className="menu-name-section">
+                              <span className="menu-bullet">•</span>
+                              <span className="menu-name">{item.menuName}</span>
+                            </div>
+                            <span className="menu-quantity">x {item.quantity}</span>
+                          </div>
+                          {item.options && item.options.length > 0 && (
+                            <div className="menu-options">
+                              {item.options.map((opt, optIdx) => (
+                                <span key={optIdx} className="option-tag">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                  </svg>
+                                  {opt.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
                     <div className="order-actions">
                       <button
                         className="order-action-button start"
@@ -491,22 +518,49 @@ function AdminPage() {
                 .filter(order => order.status === 'inProgress')
                 .map(order => (
                   <div key={order.orderId} className="order-item in-progress">
-                    <div className="order-info">
-                      <span className="order-date">
-                        {formatDate(order.createdAt)}
-                      </span>
-                      <span className="order-items">
-                        {order.items.map((item, idx) => (
-                          <span key={idx}>
-                            {item.menuName} x {item.quantity}
-                            {idx < order.items.length - 1 ? ', ' : ''}
-                          </span>
-                        ))}
-                      </span>
-                      <span className="order-amount">
-                        {order.totalAmount.toLocaleString()}원
-                      </span>
+                    <div className="order-header">
+                      <div className="order-header-info">
+                        <span className="order-time-badge">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          {formatDate(order.createdAt)}
+                        </span>
+                        <span className="order-id-badge">주문 #{order.orderId}</span>
+                      </div>
+                      <div className="order-total">
+                        <span className="total-label">합계</span>
+                        <span className="total-amount">{order.totalAmount.toLocaleString()}원</span>
+                      </div>
                     </div>
+                    
+                    <div className="order-items-container">
+                      {order.items.map((item, idx) => (
+                        <div key={idx} className="menu-item-card">
+                          <div className="menu-item-main">
+                            <div className="menu-name-section">
+                              <span className="menu-bullet">•</span>
+                              <span className="menu-name">{item.menuName}</span>
+                            </div>
+                            <span className="menu-quantity">x {item.quantity}</span>
+                          </div>
+                          {item.options && item.options.length > 0 && (
+                            <div className="menu-options">
+                              {item.options.map((opt, optIdx) => (
+                                <span key={optIdx} className="option-tag">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                  </svg>
+                                  {opt.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
                     <div className="order-actions">
                       <button
                         className="order-action-button complete"

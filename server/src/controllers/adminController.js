@@ -103,25 +103,44 @@ const getOrders = async (req, res, next) => {
     
     const ordersResult = await query(queryText, params);
     
-    // 각 주문의 아이템 조회
+    // 각 주문의 아이템 및 옵션 조회
     const orders = [];
     for (const order of ordersResult.rows) {
       const itemsResult = await query(
-        `SELECT m.name as menu_name, oi.quantity
+        `SELECT oi.item_id, m.name as menu_name, oi.quantity
          FROM order_items oi
          JOIN menus m ON oi.menu_id = m.menu_id
-         WHERE oi.order_id = $1`,
+         WHERE oi.order_id = $1
+         ORDER BY oi.item_id`,
         [order.order_id]
       );
+      
+      // 각 아이템의 옵션 조회
+      const items = [];
+      for (const item of itemsResult.rows) {
+        const optionsResult = await query(
+          `SELECT option_name, option_price
+           FROM order_item_options
+           WHERE item_id = $1
+           ORDER BY id`,
+          [item.item_id]
+        );
+        
+        items.push({
+          menuName: item.menu_name,
+          quantity: item.quantity,
+          options: optionsResult.rows.map(opt => ({
+            name: opt.option_name,
+            price: opt.option_price
+          }))
+        });
+      }
       
       orders.push({
         orderId: order.order_id,
         totalAmount: order.total_amount,
         status: order.status,
-        items: itemsResult.rows.map(item => ({
-          menuName: item.menu_name,
-          quantity: item.quantity
-        })),
+        items: items,
         createdAt: order.created_at
       });
     }
