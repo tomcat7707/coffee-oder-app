@@ -1,10 +1,15 @@
 const { Pool } = require('pg');
 
+// 환경 변수 디버깅
+console.log('🔍 DATABASE_URL 존재 여부:', !!process.env.DATABASE_URL);
+console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+
 // PostgreSQL 연결 풀 설정
 let poolConfig;
 
 if (process.env.DATABASE_URL) {
   // Production: DATABASE_URL 사용
+  console.log('✅ DATABASE_URL 사용 (Production 모드)');
   poolConfig = {
     connectionString: process.env.DATABASE_URL,
     ssl: {
@@ -13,6 +18,7 @@ if (process.env.DATABASE_URL) {
   };
 } else {
   // Development: 개별 설정 사용
+  console.log('✅ 개별 DB 설정 사용 (Development 모드)');
   poolConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 5432,
@@ -21,6 +27,8 @@ if (process.env.DATABASE_URL) {
     password: process.env.DB_PASSWORD
   };
 }
+
+console.log('📊 Pool Config Keys:', Object.keys(poolConfig));
 
 const pool = new Pool({
   ...poolConfig,
