@@ -41,6 +41,73 @@ export const menuApi = {
     const response = await apiCall(`/menus/${id}`)
     return response.data
   },
+
+  // 모든 메뉴 조회 (관리자용)
+  getAllMenus: async () => {
+    const response = await apiCall('/menus')
+    return response.data
+  },
+
+  // 메뉴 추가
+  createMenu: async (menuData) => {
+    const response = await apiCall('/admin/menus', {
+      method: 'POST',
+      body: JSON.stringify(menuData),
+    })
+    return response.data
+  },
+
+  // 메뉴 수정
+  updateMenu: async (menuId, menuData) => {
+    const response = await apiCall(`/admin/menus/${menuId}`, {
+      method: 'PUT',
+      body: JSON.stringify(menuData),
+    })
+    return response.data
+  },
+
+  // 메뉴 삭제
+  deleteMenu: async (menuId) => {
+    const response = await apiCall(`/admin/menus/${menuId}`, {
+      method: 'DELETE',
+    })
+    return response.data
+  },
+}
+
+// 옵션 관련 API
+export const optionApi = {
+  // 모든 옵션 조회
+  getAllOptions: async () => {
+    const response = await apiCall('/admin/options')
+    return response.data
+  },
+
+  // 옵션 추가
+  createOption: async (optionData) => {
+    const response = await apiCall('/admin/options', {
+      method: 'POST',
+      body: JSON.stringify(optionData),
+    })
+    return response.data
+  },
+
+  // 옵션 수정
+  updateOption: async (optionId, optionData) => {
+    const response = await apiCall(`/admin/options/${optionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(optionData),
+    })
+    return response.data
+  },
+
+  // 옵션 삭제
+  deleteOption: async (optionId) => {
+    const response = await apiCall(`/admin/options/${optionId}`, {
+      method: 'DELETE',
+    })
+    return response.data
+  },
 }
 
 // 재고 관련 API

@@ -420,3 +420,274 @@
     display: none;
   }
 }
+
+/* 탭 네비게이션 */
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  border-bottom: 2px solid #e8e3db;
+}
+
+.admin-tab {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.admin-tab:hover {
+  color: #8b5a3c;
+}
+
+.admin-tab.active {
+  color: #8b5a3c;
+  border-bottom-color: #8b5a3c;
+  font-weight: 600;
+}
+
+/* 메뉴 관리 섹션 */
+.menu-management-section,
+.option-management-section {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.add-button {
+  padding: 10px 20px;
+  background-color: #8b5a3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-button:hover {
+  background-color: #6d4530;
+}
+
+/* 메뉴 테이블 */
+.menu-table {
+  overflow-x: auto;
+}
+
+.menu-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.menu-table th,
+.menu-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e8e3db;
+}
+
+.menu-table th {
+  background-color: #f5f0eb;
+  font-weight: 600;
+  color: #5c4033;
+}
+
+.menu-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.menu-thumbnail-placeholder {
+  width: 60px;
+  height: 60px;
+  background-color: #f0f0f0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #999;
+}
+
+.action-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: all 0.3s;
+}
+
+.action-button.edit {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.action-button.edit:hover {
+  background-color: #45a049;
+}
+
+.action-button.delete {
+  background-color: #f44336;
+  color: white;
+}
+
+.action-button.delete:hover {
+  background-color: #da190b;
+}
+
+/* 옵션 리스트 */
+.option-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.option-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: #f5f0eb;
+  border-radius: 8px;
+  border: 1px solid #e8e3db;
+}
+
+.option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.option-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.option-price {
+  font-size: 14px;
+  color: #8b5a3c;
+  font-weight: 500;
+}
+
+.option-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 모달 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h2 {
+  margin-bottom: 24px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.image-preview {
+  margin-top: 12px;
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cancel-button,
+.save-button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.cancel-button {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.cancel-button:hover {
+  background-color: #d0d0d0;
+}
+
+.save-button {
+  background-color: #8b5a3c;
+  color: white;
+}
+
+.save-button:hover {
+  background-color: #6d4530;
+}
+
