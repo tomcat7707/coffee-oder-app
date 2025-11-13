@@ -161,8 +161,8 @@
 /* 옵션 선택 */
 .menu-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
   padding: 14px 0;
   border-top: 1px solid #e8e3db;
   border-bottom: 1px solid #e8e3db;

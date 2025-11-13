@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { menuApi, orderApi } from '../services/api'
+import useOrderCart from '../hooks/useOrderCart'
 import './OrderPage.css'
 
 function OrderPage() {
@@ -8,8 +9,18 @@ function OrderPage() {
   const [menus, setMenus] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [cart, setCart] = useState([])
-  const [selectedOptions, setSelectedOptions] = useState({})
+  const {
+    cart,
+    selectedOptions,
+    toggleOption,
+    addMenuToCart,
+    increaseQuantity,
+    decreaseQuantity,
+    removeItem,
+    clearCart,
+    clearSelections,
+    totalAmount
+  } = useOrderCart()
   const [orderLoading, setOrderLoading] = useState(false)
 
   // 메뉴 데이터 로드
@@ -29,100 +40,6 @@ function OrderPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  // 옵션 선택/해제 핸들러
-  const handleOptionChange = (menuId, optionId) => {
-    setSelectedOptions(prev => {
-      const menuOptions = prev[menuId] || []
-      const isSelected = menuOptions.includes(optionId)
-      
-      return {
-        ...prev,
-        [menuId]: isSelected
-          ? menuOptions.filter(id => id !== optionId)
-          : [...menuOptions, optionId]
-      }
-    })
-  }
-
-  // 장바구니에 추가
-  const handleAddToCart = (menu) => {
-    const selectedOptionIds = selectedOptions[menu.menuId] || []
-    const selectedMenuOptions = menu.options.filter(opt => 
-      selectedOptionIds.includes(opt.optionId)
-    )
-    
-    const optionsPrice = selectedMenuOptions.reduce((sum, opt) => sum + opt.price, 0)
-    const totalPrice = menu.price + optionsPrice
-
-    const cartItem = {
-      menuId: menu.menuId,
-      menuName: menu.name,
-      basePrice: menu.price,
-      selectedOptions: selectedMenuOptions,
-      quantity: 1,
-      totalPrice: totalPrice
-    }
-
-    // 동일한 메뉴+옵션 조합이 있는지 확인
-    const existingIndex = cart.findIndex(item => 
-      item.menuId === cartItem.menuId &&
-      JSON.stringify(item.selectedOptions) === JSON.stringify(cartItem.selectedOptions)
-    )
-
-    if (existingIndex >= 0) {
-      // 수량 증가
-      const newCart = [...cart]
-      newCart[existingIndex].quantity += 1
-      newCart[existingIndex].totalPrice = 
-        (cartItem.basePrice + optionsPrice) * newCart[existingIndex].quantity
-      setCart(newCart)
-    } else {
-      // 새 아이템 추가
-      setCart([...cart, cartItem])
-    }
-
-    // 선택된 옵션 초기화
-    setSelectedOptions(prev => ({
-      ...prev,
-      [menu.menuId]: []
-    }))
-  }
-
-  // 총 금액 계산
-  const getTotalAmount = () => {
-    return cart.reduce((sum, item) => sum + item.totalPrice, 0)
-  }
-
-  // 수량 증가
-  const handleIncreaseQuantity = (index) => {
-    const newCart = [...cart]
-    const item = newCart[index]
-    const unitPrice = item.basePrice + item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0)
-    
-    item.quantity += 1
-    item.totalPrice = unitPrice * item.quantity
-    setCart(newCart)
-  }
-
-  // 수량 감소
-  const handleDecreaseQuantity = (index) => {
-    const newCart = [...cart]
-    const item = newCart[index]
-    
-    if (item.quantity > 1) {
-      const unitPrice = item.basePrice + item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0)
-      item.quantity -= 1
-      item.totalPrice = unitPrice * item.quantity
-      setCart(newCart)
-    }
-  }
-
-  // 아이템 삭제
-  const handleRemoveItem = (index) => {
-    const newCart = cart.filter((_, i) => i !== index)
-    setCart(newCart)
   }
 
   // 주문하기
@@ -145,7 +62,8 @@ function OrderPage() {
 
       const result = await orderApi.createOrder(orderData)
       alert(`주문이 완료되었습니다!\n주문번호: ${result.orderId}\n총 금액: ${result.totalAmount.toLocaleString()}원`)
-      setCart([])
+      clearCart()
+      clearSelections()
     } catch (err) {
       console.error('Order failed:', err)
       alert(err.message || '주문에 실패했습니다')
@@ -224,7 +142,7 @@ function OrderPage() {
                         <input
                           type="checkbox"
                           checked={(selectedOptions[menu.menuId] || []).includes(option.optionId)}
-                          onChange={() => handleOptionChange(menu.menuId, option.optionId)}
+                          onChange={() => toggleOption(menu.menuId, option.optionId)}
                         />
                         <span className="option-label">
                           {option.name} (+{option.price}원)
@@ -236,7 +154,7 @@ function OrderPage() {
                   {/* 담기 버튼 */}
                   <button 
                     className="add-button"
-                    onClick={() => handleAddToCart(menu)}
+                    onClick={() => addMenuToCart(menu)}
                   >
                     담기
                   </button>
@@ -282,14 +200,14 @@ function OrderPage() {
                           <div className="quantity-controls">
                             <button 
                               className="quantity-button"
-                              onClick={() => handleDecreaseQuantity(index)}
+                              onClick={() => decreaseQuantity(index)}
                             >
                               -
                             </button>
                             <span className="quantity-display">{item.quantity}</span>
                             <button 
                               className="quantity-button"
-                              onClick={() => handleIncreaseQuantity(index)}
+                              onClick={() => increaseQuantity(index)}
                             >
                               +
                             </button>
@@ -303,7 +221,7 @@ function OrderPage() {
                           {/* 삭제 버튼 */}
                           <button 
                             className="remove-button"
-                            onClick={() => handleRemoveItem(index)}
+                            onClick={() => removeItem(index)}
                             title="삭제"
                           >
                             ✕
@@ -319,7 +237,7 @@ function OrderPage() {
               <div className="cart-summary">
                 <div className="cart-total">
                   <span className="total-label">총 금액</span>
-                  <span className="total-amount">{getTotalAmount().toLocaleString()}원</span>
+                  <span className="total-amount">{totalAmount.toLocaleString()}원</span>
                 </div>
 
                 <button 

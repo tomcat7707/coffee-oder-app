@@ -29,7 +29,7 @@ cp .env.example .env
 ```
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=coffee_order
+DB_NAME=coffee_order_db
 DB_USER=postgres
 DB_PASSWORD=your_password
 PORT=5000
@@ -44,30 +44,40 @@ PostgreSQL에 접속하여 데이터베이스를 생성합니다:
 psql -U postgres
 
 # 데이터베이스 생성
-CREATE DATABASE coffee_order;
+CREATE DATABASE coffee_order_db;
 
 # 접속 확인
-\c coffee_order
+\c coffee_order_db
 ```
 
 4. **데이터베이스 스키마 생성**
 
 ```bash
 # Windows (PowerShell)
-Get-Content database\schema.sql | psql -U postgres -d coffee_order
+Get-Content database\schema.sql | psql -U postgres -d coffee_order_db
 
 # 또는 직접 psql 명령어 사용
-psql -U postgres -d coffee_order -f database/schema.sql
+psql -U postgres -d coffee_order_db -f database/schema.sql
 ```
 
 5. **초기 데이터 삽입**
 
 ```bash
 # Windows (PowerShell)
-Get-Content database\seed.sql | psql -U postgres -d coffee_order
+Get-Content database\seed.sql | psql -U postgres -d coffee_order_db
 
 # 또는 직접 psql 명령어 사용
-psql -U postgres -d coffee_order -f database/seed.sql
+psql -U postgres -d coffee_order_db -f database/seed.sql
+
+### 데이터베이스 초기화 자동화
+
+PowerShell을 사용 중이라면 준비된 스크립트로 스키마와 시드를 한 번에 적용할 수 있습니다.
+
+```bash
+npm run db:reset
+```
+
+위 명령은 `.env`의 DB 설정과 UTF-8 인코딩을 자동으로 읽어 들인 뒤 `schema.sql`과 `seed.sql`을 순서대로 실행합니다. PostgreSQL이 다른 경로에 설치되어 있다면 `scripts/reset-db.ps1`의 `PsqlPath` 파라미터를 직접 지정할 수 있습니다.
 ```
 
 ### 서버 실행

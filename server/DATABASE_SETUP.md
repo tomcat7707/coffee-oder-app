@@ -103,9 +103,12 @@ SELECT * FROM orders;
 
 ### 데이터베이스 초기화 (주의!)
 ```bash
-# 스키마 재생성
-Get-Content database\schema.sql | psql -U postgres -d coffee_order_db
+# PowerShell 자동화 스크립트 (권장)
+npm run db:reset
 
-# 초기 데이터 재삽입
+# 수동 실행이 필요한 경우
+Get-Content database\schema.sql | psql -U postgres -d coffee_order_db
 Get-Content database\seed.sql | psql -U postgres -d coffee_order_db
 ```
+
+`npm run db:reset`은 `.env` 파일에서 DB 정보를 읽어 `schema.sql`과 `seed.sql`을 UTF-8 인코딩으로 순차 적용합니다. PostgreSQL이 다른 경로에 설치되어 있다면 `server/scripts/reset-db.ps1`의 `PsqlPath` 파라미터를 조정하세요.

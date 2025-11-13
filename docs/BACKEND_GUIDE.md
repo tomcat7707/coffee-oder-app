@@ -8,6 +8,17 @@
 - **Database**: PostgreSQL
 - **ORM**: Prisma 또는 Sequelize
 
+## 🔄 현재 운영 메모
+- `menus`, `options`, `option_presets`, `option_preset_options` 등 최신 스키마는 `database/schema.sql`에 반영되어 있습니다.
+- PowerShell 환경에서는 `npm run db:reset`으로 스키마와 시드 데이터를 한 번에 초기화할 수 있습니다.
+- UTF-8 인코딩이 아닌 경우 시드가 실패하므로 스크립트 실행 시 자동으로 `PGCLIENTENCODING`을 지정합니다.
+
+## 📈 마이그레이션 로드맵
+1. `node-pg-migrate` 또는 `knex` 마이그레이션 도구 비교 후 채택 결정
+2. 현재 `schema.sql`을 테이블 단위 마이그레이션으로 분할
+3. CI 단계에서 마이그레이션 검증 작업 추가
+4. 운영/개발 DB 간 스크립트 차이를 기록하는 변경 로그 마련
+
 ### 필요한 API 엔드포인트
 
 #### 1. 메뉴 관리
