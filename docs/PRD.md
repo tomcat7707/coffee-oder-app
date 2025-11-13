@@ -3537,6 +3537,213 @@ taskkill /F /PID <프로세스ID>
 
 ---
 
-**마지막 업데이트:** 2025-11-12
+## 10. 배포 가이드 (Render.com)
+
+### 10.1 배포 개요
+- **플랫폼**: Render.com
+- **프론트엔드**: Static Site (무료)
+- **백엔드**: Web Service (무료)
+- **데이터베이스**: PostgreSQL (무료)
+- **배포 URL**:
+  - Frontend: https://coffee-oder-app-frontend.onrender.com
+  - Backend: https://coffee-oder-app-backend.onrender.com
+
+### 10.2 배포 순서
+
+#### 10.2.1 사전 준비
+1. GitHub 리포지토리 생성 및 코드 푸시
+2. Render.com 계정 생성
+
+#### 10.2.2 PostgreSQL 데이터베이스 생성
+1. Render Dashboard → **New** → **PostgreSQL**
+2. 설정:
+   - Name: `coffee_oder_db`
+   - Database: `coffee_oder_db`
+   - User: `coffee_oder_db_user`
+   - Region: Oregon (US West)
+   - Plan: Free
+3. 생성 후 **Internal Database URL** 복사 (환경 변수로 사용)
+
+#### 10.2.3 데이터베이스 스키마 및 데이터 생성
+로컬에서 Render PostgreSQL에 연결하여 스키마 및 시드 데이터 생성:
+
+```powershell
+# 환경 변수 설정
+$env:PGCLIENTENCODING='UTF8'
+
+# 스키마 생성
+psql -h <호스트> -U <유저명> -d <데이터베이스명> -f database/schema.sql
+
+# 한글 시드 데이터 삽입
+psql -h <호스트> -U <유저명> -d <데이터베이스명> -f database/seed_korean.sql
+```
+
+#### 10.2.4 백엔드 배포 (Web Service)
+1. Render Dashboard → **New** → **Web Service**
+2. GitHub 리포지토리 연결
+3. 설정:
+   - **Name**: `coffee-oder-app-backend`
+   - **Region**: Oregon (US West)
+   - **Branch**: main
+   - **Root Directory**: `server`
+   - **Environment**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: Free
+4. **Environment Variables** 추가:
+   - `DATABASE_URL`: PostgreSQL Internal Database URL
+   - `NODE_ENV`: `production`
+   - `FRONTEND_URL`: `https://coffee-oder-app-frontend.onrender.com`
+   - `PORT`: `5000`
+5. **Create Web Service** 클릭
+
+#### 10.2.5 프론트엔드 배포 (Static Site)
+1. Render Dashboard → **New** → **Static Site**
+2. GitHub 리포지토리 연결
+3. 설정:
+   - **Name**: `coffee-oder-app-frontend`
+   - **Branch**: main
+   - **Root Directory**: `ui`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+4. **Environment Variables** 추가:
+   - `VITE_API_URL`: `https://coffee-oder-app-backend.onrender.com`
+5. **Create Static Site** 클릭
+
+### 10.3 배포 후 확인사항
+1. 백엔드 API 테스트: `https://coffee-oder-app-backend.onrender.com/api/menus`
+2. 프론트엔드 접속: `https://coffee-oder-app-frontend.onrender.com`
+3. 메뉴 한글 표시 확인
+4. 주문 생성 및 관리자 페이지 기능 테스트
+
+### 10.4 주요 이슈 및 해결방법
+
+#### 10.4.1 DATABASE_URL 파싱 오류
+**증상:**
+```
+TypeError: Cannot read properties of undefined (reading 'searchParams')
+```
+
+**원인:**
+- Render의 `DATABASE_URL` 형식이 잘못되었거나 `@` 기호가 누락됨
+- `pg-connection-string` 라이브러리의 버전 호환성 문제
+
+**해결:**
+1. `DATABASE_URL` 형식 확인:
+   ```
+   postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+   ```
+   예: `postgresql://coffee_oder_db_user:6IWtXgrFEIQH1h2TraZEDQucF7vzP2EC@dpg-d4ao1r1e2q1c73b4hqeg-a.oregon-postgres.render.com/coffee_oder_db`
+
+2. `database.js`에서 수동 파싱 구현:
+   ```javascript
+   if (process.env.DATABASE_URL) {
+     const url = new URL(process.env.DATABASE_URL);
+     poolConfig = {
+       host: url.hostname,
+       port: parseInt(url.port),
+       database: url.pathname.split('/')[1],
+       user: url.username,
+       password: url.password,
+       ssl: { rejectUnauthorized: false }
+     };
+   }
+   ```
+
+#### 10.4.2 CORS 오류
+**증상:** 프론트엔드에서 API 호출 시 CORS 에러
+
+**해결:**
+`server/src/app.js`에서 CORS 설정 확인:
+```javascript
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+```
+
+#### 10.4.3 빌드 캐시 문제
+**증상:** 최신 코드가 배포되지 않음
+
+**해결:**
+Render Dashboard → **Manual Deploy** → **Clear build cache & deploy**
+
+### 10.5 Render 무료 플랜 제약사항
+
+#### 10.5.1 Cold Start (서버 슬립)
+- **현상**: 15분간 요청이 없으면 서버가 슬립 모드로 전환
+- **영향**: 첫 요청 시 30초~1분의 지연 발생
+- **해결**: 유료 플랜으로 업그레이드 ($7/월)
+
+#### 10.5.2 성능 제한
+- **무료 플랜**: 제한된 CPU/메모리
+- **유료 플랜**: 더 빠른 응답 속도 및 안정성
+
+#### 10.5.3 비용
+- **무료**: 프론트엔드 + 백엔드 + 데이터베이스 모두 무료
+- **유료**: 
+  - Web Service (백엔드): $7/월
+  - PostgreSQL: $7/월
+  - Static Site (프론트엔드): 무료
+
+### 10.6 로컬 vs 프로덕션 성능 비교
+
+| 항목 | 로컬 개발 | Render 무료 | Render 유료 |
+|------|----------|-------------|-------------|
+| Cold Start | 없음 | 30초~1분 | 없음 |
+| API 응답 속도 | 50ms 이하 | 200ms~1s | 100ms~300ms |
+| 용도 | 개발 | 데모/포트폴리오 | 실제 운영 |
+
+### 10.7 배포 파일 구조
+
+```
+프로젝트루트/
+├── ui/
+│   ├── .env.production           # 프론트엔드 환경 변수
+│   │   └── VITE_API_URL=https://coffee-oder-app-backend.onrender.com
+│   └── src/services/api.js       # API URL 설정
+├── server/
+│   ├── src/
+│   │   ├── config/database.js    # DATABASE_URL 파싱 로직
+│   │   └── app.js                # CORS 설정
+│   └── .env                      # 로컬 개발용 (Render에서는 Environment Variables 사용)
+└── database/
+    ├── schema.sql                # 데이터베이스 스키마
+    └── seed_korean.sql           # UTF-8 한글 시드 데이터
+```
+
+### 10.8 Git 커밋 히스토리 (배포 관련)
+
+주요 배포 관련 커밋:
+- `Fix DATABASE_URL parsing for Render deployment` - DATABASE_URL 수동 파싱 구현
+- `Parse DATABASE_URL manually to avoid pg-connection-string bug` - pg 라이브러리 버그 우회
+- `Add DATABASE_URL debugging logs` - 환경 변수 디버깅 로그 추가
+- `Simplify database connection config` - 데이터베이스 연결 설정 단순화
+
+### 10.9 배포 체크리스트
+
+배포 전:
+- [ ] 로컬에서 모든 기능 테스트 완료
+- [ ] 한글 인코딩 문제 해결 (seed_korean.sql 사용)
+- [ ] 환경 변수 파일 확인 (.env, .env.production)
+- [ ] Git 리포지토리에 코드 푸시
+
+Render 설정:
+- [ ] PostgreSQL 데이터베이스 생성
+- [ ] 스키마 및 시드 데이터 삽입
+- [ ] 백엔드 Web Service 생성
+- [ ] 프론트엔드 Static Site 생성
+- [ ] 모든 환경 변수 설정
+
+배포 후:
+- [ ] 백엔드 API 응답 확인
+- [ ] 프론트엔드 정상 로드 확인
+- [ ] 한글 메뉴 정상 표시 확인
+- [ ] 주문 생성 테스트
+- [ ] 관리자 페이지 기능 테스트
+
+---
+
+**마지막 업데이트:** 2025-11-13
 **작성자:** AI Assistant with User
-**상태:** ✅ 구현 완료 및 테스트 완료
+**상태:** ✅ 구현 완료, 배포 완료 및 운영 중 (Render.com)
